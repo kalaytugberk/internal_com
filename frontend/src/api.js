@@ -50,4 +50,5 @@ export const api = {
   updateEvent: (id, d) => http.put(`/events/${id}`, d).then((r) => r.data),
   deleteEvent: (id) => http.delete(`/events/${id}`).then((r) => r.data),
   rsvpEvent: (id, d) => http.post(`/events/${id}/rsvp`, d).then((r) => r.data),
+  eventReport: (id) => http.get(`/events/${id}/report`).then((r) => r.data),
 };

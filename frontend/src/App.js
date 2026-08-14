@@ -12,6 +12,7 @@ import { PulseFeed } from "@/pages/pulse/PulseFeed";
 import { PulseFill } from "@/pages/pulse/PulseFill";
 import { EventsFeed, EventDetail } from "@/pages/events/Events";
 import { HomePage } from "@/pages/HomePage";
+import { CalendarPage } from "@/pages/CalendarPage";
 import { AdminPanel } from "@/pages/admin/AdminPanel";
 
 const AdminRoute = ({ children }) => {
@@ -37,7 +38,7 @@ function App() {
               <Route path="/ic-iletisim/etkinlik" element={<EventsFeed />} />
               <Route path="/ic-iletisim/etkinlik/:id" element={<EventDetail />} />
               <Route path="/ik" element={<AdminRoute><HRPage /></AdminRoute>} />
-              <Route path="/takvim" element={<Placeholder title="Takvim" subtitle="Etkinlik ve izin takviminiz." icon="Calendar" accent="bg-amber-50 text-amber-500" />} />
+              <Route path="/takvim" element={<CalendarPage />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
               <Route path="*" element={<Navigate to="/ic-iletisim" replace />} />
             </Routes>

@@ -836,6 +836,33 @@ async def delete_event(eid: str):
     return {"ok": True}
 
 
+@api_router.get("/events/{eid}/report")
+async def event_report(eid: str):
+    ev = await db.events.find_one({"id": eid}, {"_id": 0})
+    if not ev:
+        raise HTTPException(404, "Etkinlik bulunamadı")
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    rsvps = await db.rsvps.find({"event_id": eid}, {"_id": 0}).to_list(10000)
+    counts = _rsvp_counts(rsvps)
+    total_responded = len(rsvps)
+    target = [e for e in emps.values() if employee_matches(e, ev.get("audience"))]
+    dept = {}
+    for r in rsvps:
+        emp = emps.get(r["employee_id"])
+        if not emp:
+            continue
+        d = emp["department"]
+        dept.setdefault(d, {"department": d, "katiliyorum": 0, "belki": 0, "katilmiyorum": 0, "total": 0})
+        dept[d][r["response"]] = dept[d].get(r["response"], 0) + 1
+        dept[d]["total"] += 1
+    return {
+        "event": ev, "counts": counts, "total_responded": total_responded,
+        "target_count": len(target),
+        "response_rate": round(100 * total_responded / len(target)) if target else 0,
+        "departments": list(dept.values()),
+    }
+
+
 @api_router.post("/events/{eid}/rsvp")
 async def rsvp_event(eid: str, payload: RSVPCreate):
     ev = await db.events.find_one({"id": eid}, {"_id": 0})

@@ -9,7 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, CalendarClock, MapPin, Users } from "lucide-react";
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import { EventReport } from "@/pages/events/EventReport";
+import { Plus, Pencil, Trash2, CalendarClock, MapPin, Users, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 
 const blank = () => ({
@@ -27,6 +29,7 @@ export const EventsManager = () => {
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(null);
+  const [reportId, setReportId] = useState(null);
 
   const load = () => api.events().then(setItems);
   useEffect(() => { load(); }, []);
@@ -46,6 +49,8 @@ export const EventsManager = () => {
     else await api.createEvent(payload);
     setOpen(false); load(); toast.success("Etkinlik kaydedildi");
   };
+
+  if (reportId) return <EventReport eventId={reportId} onBack={() => setReportId(null)} />;
 
   return (
     <div>
@@ -79,8 +84,24 @@ export const EventsManager = () => {
                 <p className="text-xs text-slate-400 mt-0.5">Hedef: {audienceSummary(e.audience)}</p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                <button data-testid={`event-report-${e.id}`} onClick={() => setReportId(e.id)} className="p-2 rounded-lg text-blue-600 hover:bg-blue-50" title="Rapor"><BarChart3 className="w-4 h-4" /></button>
                 <button data-testid={`event-edit-${e.id}`} onClick={() => { setForm({ ...e, image: e.image || "", event_date: e.event_date ? e.event_date.slice(0, 16) : "" }); setOpen(true); }} className="p-2 rounded-lg text-slate-400 hover:text-blue-500"><Pencil className="w-4 h-4" /></button>
-                <button data-testid={`event-del-${e.id}`} onClick={async () => { await api.deleteEvent(e.id); load(); toast.success("Silindi"); }} className="p-2 rounded-lg text-slate-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button data-testid={`event-del-${e.id}`} className="p-2 rounded-lg text-slate-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-heading">Etkinliği sil?</AlertDialogTitle>
+                      <AlertDialogDescription>"{e.title}" etkinliği ve tüm katılım (RSVP) kayıtları kalıcı olarak silinecek. Bu işlem geri alınamaz.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel data-testid={`event-del-cancel-${e.id}`}>İptal</AlertDialogCancel>
+                      <AlertDialogAction data-testid={`event-del-confirm-${e.id}`} className="bg-rose-500 hover:bg-rose-600"
+                        onClick={async () => { await api.deleteEvent(e.id); load(); toast.success("Etkinlik silindi"); }}>Sil</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           );

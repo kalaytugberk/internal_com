@@ -36,6 +36,8 @@ Plena (İK/HR SaaS) için "İç İletişim" modülü. 20+ içerik kategorisini t
 
 - ✅ **4 yeni özellik** eklendi (2026-08-14): (1) Ana Sayfa "Almam Gereken Aksiyonlar" widget'ı — çalışanın doldurmadığı zorunlu pulse'ları + yaklaşan etkinlikleri gösterir. (2) Pulse Karşılaştırma — rapora eklenen sekme, iki tarih aralığının ortalama skorlarını yan yana + fark + trend. (3) Rapor Dışa Aktarma — pulse raporunu departman kırılımıyla CSV olarak indirir. (4) Etkinlik (RSVP) kategorisi — 3. aktif kart; admin CRUD + RSVP sayaçları, çalışan feed + detay + Katılıyorum/Belki/Katılmıyorum. Testing agent (iteration_3+4): backend 100%, frontend 100% (AdminPanel Etkinlikler tab bug'ı düzeltildi).
 
+- ✅ **3 yeni özellik** eklendi (2026-08-14): (1) Onay Kutusu — admin etkinlik silmede AlertDialog onayı ("Etkinliği sil?" + İptal/Sil). (2) Etkinlik Raporu — etkinlik başına RSVP dağılımı + departman kırılımı (yığılmış bar grafiği + detay tablosu + katılım oranı). (3) Takvim Görünümü — Takvim sekmesinde aylık takvim, etkinlikler günlerinde işaretli, gün seçimi + yaklaşan etkinlikler yan paneli, ay ileri/geri. Testing agent (iteration_5): backend 100% (6/6), frontend 100%.
+
 ## Backlog / Remaining
 - P1: Diğer kategori tipleri (Etkinlik, Kudos, Oyunlaştırma, İlan...)
 - P1: Duyuru için raporlama ekranları
