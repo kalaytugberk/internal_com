@@ -38,6 +38,9 @@ Plena (İK/HR SaaS) için "İç İletişim" modülü. 20+ içerik kategorisini t
 
 - ✅ **3 yeni özellik** eklendi (2026-08-14): (1) Onay Kutusu — admin etkinlik silmede AlertDialog onayı ("Etkinliği sil?" + İptal/Sil). (2) Etkinlik Raporu — etkinlik başına RSVP dağılımı + departman kırılımı (yığılmış bar grafiği + detay tablosu + katılım oranı). (3) Takvim Görünümü — Takvim sekmesinde aylık takvim, etkinlikler günlerinde işaretli, gün seçimi + yaklaşan etkinlikler yan paneli, ay ileri/geri. Testing agent (iteration_5): backend 100% (6/6), frontend 100%.
 
+- ✅ **Günlük Mod** (2026-08-14): tek sabit kategori, çalışan emoji (1-5) günlük girişi (günde bir kez), kendi 7 günlük trendi, hatırlatma banner'ı; admin tek ayar sayfası + KATI GİZLİLİK raporu (asla bireysel veri — yalnızca ortalamalar, departman filtresi). Testing: backend 6/6, frontend 100%.
+- ✅ **İlanlar** (2026-08-14): iç ilan panosu (Satılık/Kiralık/Aranıyor). Çalışan ilan oluşturma (5 foto, profilden otomatik iletişim, düzenlenebilir), Duyurular onay akışı (Onay Bekliyor→Yayında/Reddedildi), Keşfet feed (tür filtresi + kalan gün), detay, "İlanlarım" + İlanı Kapat, süresi dolan otomatik "Süresi Doldu". Admin: ayarlar (bildirim kanalları + varsayılan süre) + onay kuyruğu + tüm ilanlar (filtre/arama). Ayrıca rol/çalışan seçimi artık localStorage'da kalıcı. Testing: backend 12/12, frontend 100% E2E.
+
 ## Backlog / Remaining
 - P1: Diğer kategori tipleri (Etkinlik, Kudos, Oyunlaştırma, İlan...)
 - P1: Duyuru için raporlama ekranları

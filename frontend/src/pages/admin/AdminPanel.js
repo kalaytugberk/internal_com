@@ -5,7 +5,8 @@ import { AnnouncementsManager } from "@/pages/admin/AnnouncementsManager";
 import { PulsesManager } from "@/pages/pulse/PulsesManager";
 import { EventsManager } from "@/pages/events/EventsManager";
 import { MoodSettings } from "@/pages/mood/MoodSettings";
-import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile } from "lucide-react";
+import { ListingsManager } from "@/pages/listings/ListingsManager";
+import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile, Tag } from "lucide-react";
 
 const TABS = [
   { key: "categories", label: "Kategori Yönetimi", icon: Layers },
@@ -13,6 +14,7 @@ const TABS = [
   { key: "pulse", label: "Pulse Anketleri", icon: Activity },
   { key: "events", label: "Etkinlikler", icon: CalendarDays },
   { key: "mood", label: "Günlük Mod", icon: Smile },
+  { key: "listings", label: "İlanlar", icon: Tag },
 ];
 
 export const AdminPanel = () => {
@@ -47,6 +49,7 @@ export const AdminPanel = () => {
       {tab === "pulse" && <PulsesManager />}
       {tab === "events" && <EventsManager />}
       {tab === "mood" && <MoodSettings />}
+      {tab === "listings" && <ListingsManager />}
     </div>
   );
 };

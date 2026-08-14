@@ -178,10 +178,11 @@ CATEGORY_TYPES = [
     {"key": "pulse", "label": "Pulse Anketi", "active": True},
     {"key": "etkinlik", "label": "Etkinlik", "active": True},
     {"key": "gunluk_mod", "label": "Günlük Mod", "active": True},
+    {"key": "ilan", "label": "İlanlar", "active": True},
     {"key": "anket", "label": "Anket", "active": False},
     {"key": "kudos", "label": "Kudos / Takdir", "active": False},
     {"key": "oyunlastirma", "label": "Oyunlaştırma", "active": False},
-    {"key": "ilan", "label": "İç İlan", "active": False},
+    {"key": "ic_ilan", "label": "İç İlan", "active": False},
     {"key": "rozet", "label": "Rozet", "active": False},
 ]
 
@@ -895,6 +896,24 @@ class MoodEntryCreate(BaseModel):
     comment: Optional[str] = None
 
 
+class ListingConfigUpdate(BaseModel):
+    display_name: Optional[str] = None
+    icon: Optional[str] = None
+    status: Optional[str] = None
+    audience: Optional[Audience] = None
+    notification_channels: Optional[List[str]] = None
+    default_duration_days: Optional[int] = None
+
+
+class ListingCreate(BaseModel):
+    employee_id: str
+    type: str                       # satilik | kiralik | araniyor
+    title: str
+    description: str = ""
+    images: List[str] = []
+    contact: str = ""
+
+
 async def seed_mood_if_empty():
     if await db.categories.count_documents({"category_type": "gunluk_mod"}) > 0:
         return
@@ -1001,6 +1020,192 @@ async def mood_report(department: Optional[str] = None):
     }
 
 
+def _slugify(name):
+    tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosucgiosu")
+    parts = name.translate(tr).lower().split()
+    return ".".join(parts) if parts else "kullanici"
+
+
+async def backfill_contacts():
+    emps = await db.employees.find({}).to_list(1000)
+    for i, e in enumerate(emps):
+        if not e.get("email"):
+            await db.employees.update_one({"id": e["id"]}, {"$set": {
+                "email": f"{_slugify(e['name'])}@plena.com",
+                "phone": f"+90 5{(30 + i) % 60:02d} {100 + i} {(10 + i) % 90:02d} {(20 + i) % 90:02d}",
+            }})
+
+
+async def _expire_listings():
+    await db.listings.update_many(
+        {"status": "yayinda", "expires_at": {"$lt": now_iso()}},
+        {"$set": {"status": "suresi_doldu"}},
+    )
+
+
+async def seed_listings_if_empty():
+    if await db.categories.count_documents({"category_type": "ilan"}) > 0:
+        return
+    await backfill_contacts()
+    lcount = await db.categories.count_documents({})
+    lcat_id = new_id()
+    await db.categories.insert_one({
+        "id": lcat_id, "category_type": "ilan", "display_name": "İlanlar",
+        "icon": "Tag", "icon_image": None, "status": "active",
+        "audience": Audience().model_dump(),
+        "reporting_levels": ["kisi"], "content_type": "pasif",
+        "pinnable": False, "order": lcount, "created_at": now_iso(),
+        "notification_channels": ["mail", "push"], "default_duration_days": 30,
+    })
+    from datetime import timedelta
+    emps = await db.employees.find({}, {"_id": 0}).to_list(1000)
+    now_dt = datetime.now(timezone.utc)
+    samples = [
+        {"type": "satilik", "title": "2019 Model Temiz Otomobil Satılık", "description": "Az kullanılmış, bakımlı, tek sahibinden. Detaylı bilgi için iletişime geçebilirsiniz.", "status": "yayinda"},
+        {"type": "kiralik", "title": "Merkeze Yakın 2+1 Kiralık Daire", "description": "Ofise yürüme mesafesinde, eşyalı, hemen taşınmaya hazır.", "status": "yayinda"},
+        {"type": "araniyor", "title": "Ev Arkadaşı Aranıyor", "description": "Şirkete yakın 3+1 dairede oda arkadaşı arıyorum.", "status": "onay_bekliyor"},
+    ]
+    for i, s in enumerate(samples):
+        emp = emps[(i + 2) % len(emps)]
+        published = s["status"] == "yayinda"
+        await db.listings.insert_one({
+            "id": new_id(), "employee_id": emp["id"], "type": s["type"],
+            "title": s["title"], "description": s["description"], "images": [],
+            "contact": f"{emp.get('email', '')} · {emp.get('phone', '')}",
+            "status": s["status"],
+            "created_at": (now_dt - timedelta(days=i)).isoformat(),
+            "published_at": now_dt.isoformat() if published else None,
+            "expires_at": (now_dt + timedelta(days=30 - i * 3)).isoformat() if published else None,
+        })
+
+
+def _listing_out(l, emps):
+    emp = emps.get(l["employee_id"])
+    l["owner_name"] = emp["name"] if emp else "—"
+    return l
+
+
+@api_router.get("/listings/config")
+async def get_listings_config():
+    doc = await db.categories.find_one({"category_type": "ilan"}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "İlan yapılandırması bulunamadı")
+    return doc
+
+
+@api_router.put("/listings/config")
+async def update_listings_config(payload: ListingConfigUpdate):
+    update = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
+    res = await db.categories.update_one({"category_type": "ilan"}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "İlan yapılandırması bulunamadı")
+    return await db.categories.find_one({"category_type": "ilan"}, {"_id": 0})
+
+
+@api_router.get("/listings")
+async def list_listings(status: Optional[str] = None, type: Optional[str] = None, q: Optional[str] = None):
+    await _expire_listings()
+    query = {}
+    if status:
+        query["status"] = status
+    if type:
+        query["type"] = type
+    items = await db.listings.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    if q:
+        items = [i for i in items if q.lower() in i["title"].lower()]
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    return [_listing_out(i, emps) for i in items]
+
+
+@api_router.get("/listings/feed")
+async def listings_feed(employee_id: str, type: Optional[str] = None):
+    await _expire_listings()
+    emp = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not emp:
+        raise HTTPException(404, "Çalışan bulunamadı")
+    cat = await db.categories.find_one({"category_type": "ilan"}, {"_id": 0})
+    query = {"status": "yayinda"}
+    if type and type != "all":
+        query["type"] = type
+    items = await db.listings.find(query, {"_id": 0}).sort("published_at", -1).to_list(1000)
+    if cat and not employee_matches(emp, cat.get("audience")):
+        items = []
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    return [_listing_out(i, emps) for i in items]
+
+
+@api_router.get("/listings/mine")
+async def listings_mine(employee_id: str):
+    await _expire_listings()
+    items = await db.listings.find({"employee_id": employee_id}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    return [_listing_out(i, emps) for i in items]
+
+
+@api_router.get("/listings/{lid}")
+async def get_listing(lid: str):
+    await _expire_listings()
+    doc = await db.listings.find_one({"id": lid}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "İlan bulunamadı")
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    return _listing_out(doc, emps)
+
+
+@api_router.post("/listings")
+async def create_listing(payload: ListingCreate):
+    if payload.type not in ("satilik", "kiralik", "araniyor"):
+        raise HTTPException(400, "Geçersiz ilan türü")
+    if len(payload.images) > 5:
+        raise HTTPException(400, "En fazla 5 fotoğraf yüklenebilir")
+    doc = {
+        "id": new_id(), "employee_id": payload.employee_id, "type": payload.type,
+        "title": payload.title, "description": payload.description,
+        "images": payload.images, "contact": payload.contact,
+        "status": "onay_bekliyor", "created_at": now_iso(),
+        "published_at": None, "expires_at": None,
+    }
+    await db.listings.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.post("/listings/{lid}/approve")
+async def approve_listing(lid: str):
+    from datetime import timedelta
+    cat = await db.categories.find_one({"category_type": "ilan"}, {"_id": 0})
+    days = (cat or {}).get("default_duration_days", 30)
+    now_dt = datetime.now(timezone.utc)
+    res = await db.listings.update_one({"id": lid}, {"$set": {
+        "status": "yayinda", "published_at": now_dt.isoformat(),
+        "expires_at": (now_dt + timedelta(days=days)).isoformat(),
+    }})
+    if res.matched_count == 0:
+        raise HTTPException(404, "İlan bulunamadı")
+    return await db.listings.find_one({"id": lid}, {"_id": 0})
+
+
+@api_router.post("/listings/{lid}/reject")
+async def reject_listing(lid: str):
+    res = await db.listings.update_one({"id": lid}, {"$set": {"status": "reddedildi"}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "İlan bulunamadı")
+    return await db.listings.find_one({"id": lid}, {"_id": 0})
+
+
+@api_router.post("/listings/{lid}/close")
+async def close_listing(lid: str):
+    res = await db.listings.update_one({"id": lid}, {"$set": {"status": "kapali"}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "İlan bulunamadı")
+    return await db.listings.find_one({"id": lid}, {"_id": 0})
+
+
+@api_router.delete("/listings/{lid}")
+async def delete_listing(lid: str):
+    await db.listings.delete_one({"id": lid})
+    return {"ok": True}
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -1021,6 +1226,7 @@ async def on_startup():
     await seed_pulses_if_empty()
     await seed_events_if_empty()
     await seed_mood_if_empty()
+    await seed_listings_if_empty()
 
 
 @app.on_event("shutdown")

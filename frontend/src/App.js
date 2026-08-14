@@ -14,6 +14,7 @@ import { EventsFeed, EventDetail } from "@/pages/events/Events";
 import { HomePage } from "@/pages/HomePage";
 import { CalendarPage } from "@/pages/CalendarPage";
 import { MoodPage } from "@/pages/mood/MoodPage";
+import { ListingsFeed, ListingCreate, ListingDetail } from "@/pages/listings/Listings";
 import { MoodReminderBanner } from "@/components/MoodReminderBanner";
 import { AdminPanel } from "@/pages/admin/AdminPanel";
 
@@ -41,6 +42,9 @@ function App() {
               <Route path="/ic-iletisim/etkinlik" element={<EventsFeed />} />
               <Route path="/ic-iletisim/etkinlik/:id" element={<EventDetail />} />
               <Route path="/ic-iletisim/gunluk-mod" element={<MoodPage />} />
+              <Route path="/ic-iletisim/ilanlar" element={<ListingsFeed />} />
+              <Route path="/ic-iletisim/ilanlar/yeni" element={<ListingCreate />} />
+              <Route path="/ic-iletisim/ilanlar/:id" element={<ListingDetail />} />
               <Route path="/ik" element={<AdminRoute><HRPage /></AdminRoute>} />
               <Route path="/takvim" element={<CalendarPage />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />

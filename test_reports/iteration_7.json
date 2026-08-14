@@ -1,0 +1,37 @@
+{
+  "summary": "Phase 7 — İlanlar (Listings) module. Backend: 12/12 pytest cases PASS covering config get/put, backfilled employee email/phone, seeded listings (3: 2 yayinda + 1 onay_bekliyor with owner_name and 'email · phone' contact), list filters (status/type/q), invalid-type & >5-images 400 validation, full lifecycle (create → mine visibility, feed exclusion → approve → feed inclusion with expires_at set → type filter → detail → close → delete → 404), reject, feed invalid_employee → 404, and expiry sanity (seeded published listings' expires_at > now). Frontend E2E via Playwright with localStorage-driven role switching WORKED reliably (pln_role='employee'/'admin' resolves the previous Radix radio limitation): (1) discovery card 'İlanlar' present alongside 4 other categories, (2) Keşfet feed shows 2 published listings, type filter chips (all/satilik/kiralik/araniyor) filter correctly, (3) detail page opens showing title/type/remaining-days/owner name/contact, (4) create page prefills contact from mock profile ('erol.tas@plena.com · +90 532 102 12 22') and radio 3-option Satılık/Kiralık/Aranıyor works, submit creates 'TEST_UI_Satilik_Bike' with status Onay Bekliyor in İlanlarım, (5) admin İlanlar tab shows 3 sub-views (Ayarlar/Onay Kuyruğu(2)/Tüm İlanlar) with mail/push/sms channels + duration field, approving the pending TEST listing published it and it appeared in the employee Keşfet feed with '30 gün kaldı' badge. Cleanup: TEST listing deleted via admin.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/category-types", "issue": "CATEGORY_TYPES has duplicate key='ilan' — one active ('İlanlar') and one inactive ('İç İlan') placeholder (server.py L181 & L185). Causes React 'Encountered two children with the same key: ilan' console warnings on every CategoriesManager render. Rename the inactive placeholder to key='ic_ilan' (or drop it)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_listings.py",
+    "/app/test_reports/pytest/listings_results.xml"
+  ],
+  "action_items": [
+    "Rename inactive placeholder in server.py CATEGORY_TYPES from key='ilan' (İç İlan) to key='ic_ilan' to eliminate the React duplicate-key console warning."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now ~1235 lines — well above the 700-line guideline. Time to split into modules (mood.py, listings.py, pulse.py, events.py, announcements.py). Not blocking.",
+    "Listings API is clean: proper enum + 5-image validation, expiry via on-fetch _expire_listings (documented as no-cron), owner_name enrichment excludes _id, and audience filter reused via employee_matches. Good separation.",
+    "Backfill runs inside seed_listings_if_empty — if that seed already ran on a fresh DB WITHOUT existing employees having email/phone, the backfill still writes them; but if listings category was seeded before backfill_contacts was added, existing DBs won't be retro-backfilled. Consider running backfill_contacts unconditionally on startup (idempotent — it only fills missing).",
+    "ListingCreate has default description='' and images=[], but no title length / description length validation. Minor — main agent may add pydantic constraints (min_length=1) if desired."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_listings.py (new)"
+  ],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "100% — full E2E (employee create → admin approve → employee feed) completed via localStorage-driven role switch"},
+  "test_credentials": "None — mock role switcher; localStorage keys pln_role ('admin'|'employee') and pln_emp drive flows reliably.",
+  "seed_data_creation": "Playwright E2E created and then deleted TEST_UI_Satilik_Bike listing (approved & cleaned up). No residual test data.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "localStorage-driven role switching (pln_role='admin' / pln_role='employee' + navigate) is the reliable way to drive admin/employee flows; the Radix DropdownMenu radio-item automation issue noted in iterations 5-6 is fully mitigated by this pattern. Backend test suite for listings: /app/backend/tests/test_listings.py (12 tests). Only known nit: duplicate 'ilan' key in CATEGORY_TYPES list produces a console warning but no functional impact.",
+  "rca of the issue": "N/A for listings functionality. The React 'duplicate key ilan' warning RCA: /app/backend/server.py L176-187 CATEGORY_TYPES contains two entries with key='ilan' — an active 'İlanlar' (L181, this phase's addition) and a leftover inactive 'İç İlan' placeholder (L185). CategoriesManager renders `types.map(t => <span key={t.key}>...)` producing duplicate React keys. Fix: change L185 to key='ic_ilan'."
+}

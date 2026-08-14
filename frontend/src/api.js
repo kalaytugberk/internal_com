@@ -58,4 +58,16 @@ export const api = {
   submitMood: (d) => http.post("/mood/entry", d).then((r) => r.data),
   moodMyHistory: (employeeId) => http.get("/mood/my-history", { params: { employee_id: employeeId } }).then((r) => r.data),
   moodReport: (department) => http.get("/mood/report", { params: department ? { department } : {} }).then((r) => r.data),
+
+  listingsConfig: () => http.get("/listings/config").then((r) => r.data),
+  updateListingsConfig: (d) => http.put("/listings/config", d).then((r) => r.data),
+  listings: (params) => http.get("/listings", { params }).then((r) => r.data),
+  listingsFeed: (employeeId, type) => http.get("/listings/feed", { params: { employee_id: employeeId, ...(type ? { type } : {}) } }).then((r) => r.data),
+  myListings: (employeeId) => http.get("/listings/mine", { params: { employee_id: employeeId } }).then((r) => r.data),
+  listing: (id) => http.get(`/listings/${id}`).then((r) => r.data),
+  createListing: (d) => http.post("/listings", d).then((r) => r.data),
+  approveListing: (id) => http.post(`/listings/${id}/approve`).then((r) => r.data),
+  rejectListing: (id) => http.post(`/listings/${id}/reject`).then((r) => r.data),
+  closeListing: (id) => http.post(`/listings/${id}/close`).then((r) => r.data),
+  deleteListing: (id) => http.delete(`/listings/${id}`).then((r) => r.data),
 };
