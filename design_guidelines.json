@@ -1,0 +1,143 @@
+{
+  "typography": {
+    "heading_font": "Manrope, sans-serif",
+    "body_font": "Inter, sans-serif",
+    "heading_styles": {
+      "h1": "text-2xl sm:text-3xl font-bold tracking-tight text-slate-800",
+      "h2": "text-xl sm:text-2xl font-semibold tracking-tight text-slate-800",
+      "h3": "text-lg font-semibold text-slate-800",
+      "h4": "text-base font-medium text-slate-700"
+    },
+    "body_styles": {
+      "base": "text-sm text-slate-600",
+      "small": "text-xs text-slate-500"
+    }
+  },
+  "colors": {
+    "primary": {
+      "DEFAULT": "#3B82F6",
+      "hover": "#2563EB",
+      "light": "#EFF6FF",
+      "text": "#1D4ED8"
+    },
+    "surface": {
+      "background": "#F8FAFC",
+      "card": "#FFFFFF",
+      "border": "#E2E8F0"
+    },
+    "text": {
+      "primary": "#0F172A",
+      "secondary": "#64748B",
+      "muted": "#94A3B8"
+    },
+    "pastels": {
+      "mint": "bg-[#E6F7F4] text-[#0D9488]",
+      "peach": "bg-[#FFF1E6] text-[#EA580C]",
+      "pink": "bg-[#FCE7F3] text-[#DB2777]",
+      "blue": "bg-[#E0F2FE] text-[#0284C7]",
+      "yellow": "bg-[#FEF9C3] text-[#CA8A04]",
+      "purple": "bg-[#F3E8FF] text-[#9333EA]",
+      "gray": "bg-[#F1F5F9] text-[#475569]"
+    },
+    "status": {
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "error": "#EF4444",
+      "info": "#3B82F6"
+    }
+  },
+  "visual_enhancers": {
+    "border_radius": {
+      "card": "rounded-xl",
+      "button": "rounded-lg",
+      "input": "rounded-md",
+      "badge": "rounded-full"
+    },
+    "shadows": {
+      "card": "shadow-sm border border-slate-100",
+      "dropdown": "shadow-lg border border-slate-100"
+    },
+    "icons": {
+      "library": "lucide-react",
+      "stroke_width": "1.5",
+      "size": {
+        "nav": "w-5 h-5",
+        "card": "w-6 h-6",
+        "small": "w-4 h-4"
+      }
+    }
+  },
+  "components": {
+    "top_navigation": {
+      "structure": "Fixed at top, white background, border-b border-slate-200. Three sections: Left (Search), Center (Tabs), Right (Profile/Actions). It MUST be exactly the Plena shell.",
+      "search": "Left-aligned, gray background (bg-slate-100), rounded-full, placeholder 'Her yerde ara...', magnifying glass icon on the left.",
+      "tabs": "Center-aligned. Items: Ana Sayfa, Takım, İç İletişim, İK, Takvim. Active tab: text-blue-500, border-b-2 border-blue-500, icon active. Inactive tab: text-slate-500, hover:text-slate-700.",
+      "right_actions": "Role switcher (Admin/Çalışan simple toggle), Settings Gear (gray), Bell icon with unread red badge (absolute -top-1 -right-1), Avatar circle with initials ('ST') and text 'PROFİLİM'."
+    },
+    "buttons": {
+      "primary": "bg-blue-500 text-white hover:bg-blue-600 rounded-lg px-4 py-2 font-medium transition-colors",
+      "secondary": "bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg px-4 py-2 font-medium transition-colors",
+      "outline": "border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg px-4 py-2 font-medium transition-colors"
+    },
+    "cards": {
+      "pastel_widget": "Solid pastel background (no shadow), rounded-xl, p-4 or p-6. Icon on left/top, title and description.",
+      "white_card": "bg-white border border-slate-100 shadow-sm rounded-xl p-5."
+    }
+  },
+  "grids_and_layouts": {
+    "app_shell": "flex flex-col min-h-screen bg-slate-50",
+    "main_content": "flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8",
+    "module_discovery_grid": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6",
+    "admin_layout": "grid grid-cols-1 lg:grid-cols-4 gap-8 where left is sidebar/filters and right is content"
+  },
+  "motion": {
+    "hover_states": "transition-colors duration-200 ease-in-out",
+    "tab_switch": "relative, use framer-motion layoutId for the active tab underline if possible, or simple CSS border transition.",
+    "modals": "Fade in and scale up slightly (duration-200)"
+  },
+  "accessibility": {
+    "aria_labels": "Required on all icon-only buttons (bell, settings).",
+    "focus_states": "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+    "data_testid": "MANDATORY on all interactive elements (buttons, links, form inputs, tabs)."
+  },
+  "media": {
+    "images": [
+      {
+        "url": "https://images.unsplash.com/photo-1568992688065-536aad8a12f6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwzfHxvZmZpY2UlMjB0ZWFtd29yayUyMG1lZXRpbmd8ZW58MHx8fHwxNzg2NzAyODI4fDA&ixlib=rb-4.1.0&q=85",
+        "category": "announcement_hero",
+        "description": "Office teamwork meeting for announcements"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1517048676732-d65bc937f952?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwxfHxvZmZpY2UlMjB0ZWFtd29yayUyMG1lZXRpbmd8ZW58MHx8fHwxNzg2NzAyODI4fDA&ixlib=rb-4.1.0&q=85",
+        "category": "announcement_thumbnail",
+        "description": "Office teamwork meeting thumbnail"
+      }
+    ]
+  },
+  "instructions_to_main_agent": {
+    "phase_1_setup": "Set up React Router with the App Shell. Implement the exact Plena Top Navigation. Add a Mock Role Switcher (Admin vs Çalışan) in the top right. ALL text MUST be in Turkish.",
+    "phase_2_discovery": "Build the 'İç İletişim' Discovery Screen for Employee. Show a grid of scalable categories. 'Duyurular' is active and expanded, showing the latest 2-3 announcements.",
+    "phase_3_admin_engine": "Build the Admin Category Definition Engine. Allows drag-drop ordering of categories, icon picker, status toggle, and audience segmentation.",
+    "phase_4_announcements": "Build the Announcement Create Form (title, body, image upload, sub-category, audience multi-select, channels like Mail/Push/SMS). Add Approval flow statuses (Draft, Pending, Published, Passive). Build the Admin list view with filters.",
+    "phase_5_employee_view": "Build the Employee Announcement Feed and Detail View. Add the 'Öne Çıkanlar' (Featured) pinned strip at the top of the feed.",
+    "component_details": "Use Shadcn UI for complex interactives (Select, Dialog, Tabs, Table). Build custom pastel cards for the discovery grid to match the HR page screenshot exactly."
+  },
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) where appropriate (e.g. sticky headers).",
+    "You MUST NOT apply universal transition. Eg: transition: all. Always add transitions for specific interactive elements.",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; }.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, custom cursors, selection states, and loading animations separate good from extraordinary.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Use `sonner` for toasts, located in /app/src/components/ui/sonner.js.",
+    "All interactive and key informational elements MUST include a `data-testid` attribute.",
+    "Avoid using complete transparent background in header, overlays, or any surface that has content under it."
+  ]
+}

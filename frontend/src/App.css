@@ -1,0 +1,12 @@
+.App {
+    min-height: 100vh;
+}
+
+@keyframes pln-fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.pln-fade-up {
+    animation: pln-fade-up 0.35s ease-out both;
+}
