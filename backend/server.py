@@ -179,6 +179,7 @@ CATEGORY_TYPES = [
     {"key": "etkinlik", "label": "Etkinlik", "active": True},
     {"key": "gunluk_mod", "label": "Günlük Mod", "active": True},
     {"key": "ilan", "label": "İlanlar", "active": True},
+    {"key": "avatar", "label": "Avatar Seçimi", "active": True},
     {"key": "anket", "label": "Anket", "active": False},
     {"key": "kudos", "label": "Kudos / Takdir", "active": False},
     {"key": "oyunlastirma", "label": "Oyunlaştırma", "active": False},
@@ -1206,6 +1207,157 @@ async def delete_listing(lid: str):
     return {"ok": True}
 
 
+class ConceptCreate(BaseModel):
+    name: str
+    cover: Optional[str] = None
+    style: str = "bottts"
+    audience: Optional[Audience] = None
+    count: int = 12
+
+
+class ConceptUpdate(BaseModel):
+    name: Optional[str] = None
+    cover: Optional[str] = None
+    style: Optional[str] = None
+    audience: Optional[Audience] = None
+    status: Optional[str] = None
+
+
+class AvatarSelect(BaseModel):
+    employee_id: str
+    avatar: str
+
+
+def gen_avatars(style, count):
+    return [f"https://api.dicebear.com/9.x/{style}/svg?seed={style}-{new_id()[:8]}" for _ in range(count)]
+
+
+async def seed_avatars_if_empty():
+    if await db.categories.count_documents({"category_type": "avatar"}) > 0:
+        return
+    acount = await db.categories.count_documents({})
+    acat_id = new_id()
+    await db.categories.insert_one({
+        "id": acat_id, "category_type": "avatar", "display_name": "Avatar Seçimi",
+        "icon": "Sparkles", "icon_image": None, "status": "active",
+        "audience": Audience().model_dump(),
+        "reporting_levels": ["sirket"], "content_type": "pasif",
+        "pinnable": False, "order": acount, "created_at": now_iso(),
+    })
+    concepts = [
+        {"name": "Hayvanlar", "style": "thumbs", "audience": None},
+        {"name": "Robotlar", "style": "bottts", "audience": None},
+        {"name": "Klasik", "style": "avataaars", "audience": None},
+        {"name": "Yönetici Özel", "style": "adventurer", "audience": {**Audience().model_dump(), "all": False, "titles": ["Yönetici", "Direktör"]}},
+    ]
+    for c in concepts:
+        avatars = gen_avatars(c["style"], 12)
+        await db.avatar_concepts.insert_one({
+            "id": new_id(), "category_id": acat_id, "name": c["name"], "style": c["style"],
+            "cover": avatars[0], "audience": c["audience"], "status": "active",
+            "avatars": avatars, "created_at": now_iso(),
+        })
+
+
+@api_router.get("/avatar/config")
+async def get_avatar_config():
+    doc = await db.categories.find_one({"category_type": "avatar"}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Avatar yapılandırması bulunamadı")
+    return doc
+
+
+@api_router.get("/avatar/concepts")
+async def list_concepts():
+    return await db.avatar_concepts.find({}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+
+
+@api_router.post("/avatar/concepts")
+async def create_concept(payload: ConceptCreate):
+    avatars = gen_avatars(payload.style, max(1, min(payload.count, 15)))
+    cat = await db.categories.find_one({"category_type": "avatar"}, {"_id": 0})
+    doc = {
+        "id": new_id(), "category_id": cat["id"] if cat else None, "name": payload.name,
+        "style": payload.style, "cover": payload.cover or avatars[0],
+        "audience": payload.audience.model_dump() if payload.audience else None,
+        "status": "active", "avatars": avatars, "created_at": now_iso(),
+    }
+    await db.avatar_concepts.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.put("/avatar/concepts/{cid}")
+async def update_concept(cid: str, payload: ConceptUpdate):
+    data = payload.model_dump(exclude_unset=True)
+    update = {}
+    for k in ("name", "cover", "style", "status"):
+        if data.get(k) is not None:
+            update[k] = data[k]
+    if "audience" in data:
+        update["audience"] = payload.audience.model_dump() if payload.audience else None
+    res = await db.avatar_concepts.update_one({"id": cid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Konsept bulunamadı")
+    return await db.avatar_concepts.find_one({"id": cid}, {"_id": 0})
+
+
+@api_router.post("/avatar/concepts/{cid}/add")
+async def add_avatar(cid: str):
+    concept = await db.avatar_concepts.find_one({"id": cid}, {"_id": 0})
+    if not concept:
+        raise HTTPException(404, "Konsept bulunamadı")
+    new_av = gen_avatars(concept.get("style", "bottts"), 1)[0]
+    await db.avatar_concepts.update_one({"id": cid}, {"$push": {"avatars": new_av}})
+    return await db.avatar_concepts.find_one({"id": cid}, {"_id": 0})
+
+
+@api_router.post("/avatar/concepts/{cid}/remove")
+async def remove_avatar(cid: str, payload: dict):
+    await db.avatar_concepts.update_one({"id": cid}, {"$pull": {"avatars": payload.get("avatar")}})
+    return await db.avatar_concepts.find_one({"id": cid}, {"_id": 0})
+
+
+@api_router.delete("/avatar/concepts/{cid}")
+async def delete_concept(cid: str):
+    await db.avatar_concepts.delete_one({"id": cid})
+    return {"ok": True}
+
+
+@api_router.get("/avatar/concepts/feed")
+async def concepts_feed(employee_id: str):
+    emp = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not emp:
+        raise HTTPException(404, "Çalışan bulunamadı")
+    cat = await db.categories.find_one({"category_type": "avatar"}, {"_id": 0})
+    concepts = await db.avatar_concepts.find({"status": "active"}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+    result = []
+    for c in concepts:
+        aud = c.get("audience") or (cat.get("audience") if cat else None)
+        if employee_matches(emp, aud):
+            result.append(c)
+    return result
+
+
+@api_router.post("/avatar/select")
+async def select_avatar(payload: AvatarSelect):
+    res = await db.employees.update_one({"id": payload.employee_id}, {"$set": {"avatar": payload.avatar}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Çalışan bulunamadı")
+    return {"ok": True, "avatar": payload.avatar}
+
+
+@api_router.get("/avatar/report")
+async def avatar_report():
+    concepts = await db.avatar_concepts.find({}, {"_id": 0}).to_list(1000)
+    emps = await db.employees.find({}, {"_id": 0}).to_list(1000)
+    selected = [e.get("avatar") for e in emps if e.get("avatar")]
+    rows = []
+    for c in concepts:
+        cnt = sum(1 for a in selected if a in c["avatars"])
+        rows.append({"name": c["name"], "count": cnt})
+    return {"concepts": rows, "total_selected": len(selected), "total_employees": len(emps)}
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -1227,6 +1379,7 @@ async def on_startup():
     await seed_events_if_empty()
     await seed_mood_if_empty()
     await seed_listings_if_empty()
+    await seed_avatars_if_empty()
 
 
 @app.on_event("shutdown")

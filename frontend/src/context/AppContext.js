@@ -30,9 +30,11 @@ export const AppProvider = ({ children }) => {
 
   const currentEmployee = employees.find((e) => e.id === currentEmployeeId) || null;
 
+  const refreshEmployees = () => api.employees().then(setEmployees);
+
   return (
     <AppContext.Provider
-      value={{ role, setRole, employees, currentEmployeeId, setCurrentEmployeeId, currentEmployee, pulseRefresh, bumpPulse, moodRefresh, bumpMood }}
+      value={{ role, setRole, employees, currentEmployeeId, setCurrentEmployeeId, currentEmployee, pulseRefresh, bumpPulse, moodRefresh, bumpMood, refreshEmployees }}
     >
       {children}
     </AppContext.Provider>

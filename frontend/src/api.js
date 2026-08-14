@@ -70,4 +70,15 @@ export const api = {
   rejectListing: (id) => http.post(`/listings/${id}/reject`).then((r) => r.data),
   closeListing: (id) => http.post(`/listings/${id}/close`).then((r) => r.data),
   deleteListing: (id) => http.delete(`/listings/${id}`).then((r) => r.data),
+
+  avatarConfig: () => http.get("/avatar/config").then((r) => r.data),
+  concepts: () => http.get("/avatar/concepts").then((r) => r.data),
+  createConcept: (d) => http.post("/avatar/concepts", d).then((r) => r.data),
+  updateConcept: (id, d) => http.put(`/avatar/concepts/${id}`, d).then((r) => r.data),
+  deleteConcept: (id) => http.delete(`/avatar/concepts/${id}`).then((r) => r.data),
+  addAvatar: (id) => http.post(`/avatar/concepts/${id}/add`).then((r) => r.data),
+  removeAvatar: (id, avatar) => http.post(`/avatar/concepts/${id}/remove`, { avatar }).then((r) => r.data),
+  conceptsFeed: (employeeId) => http.get("/avatar/concepts/feed", { params: { employee_id: employeeId } }).then((r) => r.data),
+  selectAvatar: (d) => http.post("/avatar/select", d).then((r) => r.data),
+  avatarReport: () => http.get("/avatar/report").then((r) => r.data),
 };

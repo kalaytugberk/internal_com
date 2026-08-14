@@ -135,8 +135,10 @@ export const Shell = ({ children }) => {
               <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold grid place-items-center">3</span>
             </button>
             <div className="flex items-center gap-2 pl-1">
-              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 text-xs font-bold grid place-items-center">
-                {initials(role === "employee" ? currentEmployee?.name : "Selin Tekin")}
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 text-xs font-bold grid place-items-center overflow-hidden">
+                {role === "employee" && currentEmployee?.avatar
+                  ? <img src={currentEmployee.avatar} alt="" className="w-full h-full object-cover" data-testid="nav-avatar" />
+                  : initials(role === "employee" ? currentEmployee?.name : "Selin Tekin")}
               </div>
               <span className="hidden lg:block text-xs font-semibold text-slate-600">PROFİLİM</span>
             </div>

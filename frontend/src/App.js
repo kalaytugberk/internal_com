@@ -15,6 +15,7 @@ import { HomePage } from "@/pages/HomePage";
 import { CalendarPage } from "@/pages/CalendarPage";
 import { MoodPage } from "@/pages/mood/MoodPage";
 import { ListingsFeed, ListingCreate, ListingDetail } from "@/pages/listings/Listings";
+import { AvatarPage } from "@/pages/avatar/AvatarPage";
 import { MoodReminderBanner } from "@/components/MoodReminderBanner";
 import { AdminPanel } from "@/pages/admin/AdminPanel";
 
@@ -45,6 +46,7 @@ function App() {
               <Route path="/ic-iletisim/ilanlar" element={<ListingsFeed />} />
               <Route path="/ic-iletisim/ilanlar/yeni" element={<ListingCreate />} />
               <Route path="/ic-iletisim/ilanlar/:id" element={<ListingDetail />} />
+              <Route path="/ic-iletisim/avatar" element={<AvatarPage />} />
               <Route path="/ik" element={<AdminRoute><HRPage /></AdminRoute>} />
               <Route path="/takvim" element={<CalendarPage />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />

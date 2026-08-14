@@ -41,6 +41,8 @@ Plena (İK/HR SaaS) için "İç İletişim" modülü. 20+ içerik kategorisini t
 - ✅ **Günlük Mod** (2026-08-14): tek sabit kategori, çalışan emoji (1-5) günlük girişi (günde bir kez), kendi 7 günlük trendi, hatırlatma banner'ı; admin tek ayar sayfası + KATI GİZLİLİK raporu (asla bireysel veri — yalnızca ortalamalar, departman filtresi). Testing: backend 6/6, frontend 100%.
 - ✅ **İlanlar** (2026-08-14): iç ilan panosu (Satılık/Kiralık/Aranıyor). Çalışan ilan oluşturma (5 foto, profilden otomatik iletişim, düzenlenebilir), Duyurular onay akışı (Onay Bekliyor→Yayında/Reddedildi), Keşfet feed (tür filtresi + kalan gün), detay, "İlanlarım" + İlanı Kapat, süresi dolan otomatik "Süresi Doldu". Admin: ayarlar (bildirim kanalları + varsayılan süre) + onay kuyruğu + tüm ilanlar (filtre/arama). Ayrıca rol/çalışan seçimi artık localStorage'da kalıcı. Testing: backend 12/12, frontend 100% E2E.
 
+- ✅ **Avatar Seçimi** (2026-08-14): 5. kategori. Kategori "alt öğe" mekanizması yeniden kullanıldı — çoklu Konsept, her biri kendi hedef kitlesiyle (boşsa üst kategoriden miras). Konsept başına 12 DiceBear avatarı otomatik üretilir. Çalışan yalnızca hedef kitlesine uyan konseptleri görür (örn. "Yönetici Özel" yalnızca Yönetici/Direktör), avatar seçip profiline kaydeder (sınırsız değişiklik), seçim üst menü profil avatarına yansır. Admin: konsept CRUD + galeri (avatar ekle/sil) + popülerlik raporu. Onay akışı yok. Testing: backend 11/11, frontend 100% E2E.
+
 ## Backlog / Remaining
 - P1: Diğer kategori tipleri (Etkinlik, Kudos, Oyunlaştırma, İlan...)
 - P1: Duyuru için raporlama ekranları
