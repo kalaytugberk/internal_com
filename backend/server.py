@@ -177,6 +177,7 @@ CATEGORY_TYPES = [
     {"key": "duyuru", "label": "Duyuru", "active": True},
     {"key": "pulse", "label": "Pulse Anketi", "active": True},
     {"key": "etkinlik", "label": "Etkinlik", "active": True},
+    {"key": "gunluk_mod", "label": "Günlük Mod", "active": True},
     {"key": "anket", "label": "Anket", "active": False},
     {"key": "kudos", "label": "Kudos / Takdir", "active": False},
     {"key": "oyunlastirma", "label": "Oyunlaştırma", "active": False},
@@ -878,6 +879,128 @@ async def rsvp_event(eid: str, payload: RSVPCreate):
     return {"ok": True, "rsvp_counts": _rsvp_counts(rsvps), "my_rsvp": payload.response}
 
 
+class MoodConfigUpdate(BaseModel):
+    display_name: Optional[str] = None
+    icon: Optional[str] = None
+    status: Optional[str] = None
+    audience: Optional[Audience] = None
+    allow_comment: Optional[bool] = None
+    reminder_enabled: Optional[bool] = None
+    reminder_time: Optional[str] = None
+
+
+class MoodEntryCreate(BaseModel):
+    employee_id: str
+    score: int
+    comment: Optional[str] = None
+
+
+async def seed_mood_if_empty():
+    if await db.categories.count_documents({"category_type": "gunluk_mod"}) > 0:
+        return
+    import random
+    from datetime import timedelta
+    mcount = await db.categories.count_documents({})
+    mcat_id = new_id()
+    await db.categories.insert_one({
+        "id": mcat_id, "category_type": "gunluk_mod", "display_name": "Günlük Mod",
+        "icon": "Smile", "icon_image": None, "status": "active",
+        "audience": Audience().model_dump(),
+        "reporting_levels": ["organizasyon", "sirket"], "content_type": "eylem",
+        "pinnable": False, "order": mcount, "created_at": now_iso(),
+        "allow_comment": True, "reminder_enabled": True, "reminder_time": "17:00",
+    })
+    emps = await db.employees.find({}, {"_id": 0}).to_list(1000)
+    today = datetime.now(timezone.utc).date()
+    for off in range(1, 7):
+        d = (today - timedelta(days=off)).isoformat()
+        for emp in emps[2:8]:
+            await db.mood_entries.insert_one({
+                "id": new_id(), "employee_id": emp["id"], "score": random.randint(3, 5),
+                "comment": None, "date": d, "created_at": d + "T09:00:00+00:00",
+            })
+    # a couple of entries for today (but NOT the default employee viewer, so their widget shows form)
+    td = today.isoformat()
+    for emp in emps[4:6]:
+        await db.mood_entries.insert_one({
+            "id": new_id(), "employee_id": emp["id"], "score": random.randint(3, 5),
+            "comment": None, "date": td, "created_at": now_iso(),
+        })
+
+
+@api_router.get("/mood/config")
+async def get_mood_config():
+    doc = await db.categories.find_one({"category_type": "gunluk_mod"}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Günlük Mod yapılandırması bulunamadı")
+    return doc
+
+
+@api_router.put("/mood/config")
+async def update_mood_config(payload: MoodConfigUpdate):
+    update = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
+    res = await db.categories.update_one({"category_type": "gunluk_mod"}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Günlük Mod yapılandırması bulunamadı")
+    return await db.categories.find_one({"category_type": "gunluk_mod"}, {"_id": 0})
+
+
+@api_router.get("/mood/today")
+async def mood_today(employee_id: str):
+    td = datetime.now(timezone.utc).date().isoformat()
+    e = await db.mood_entries.find_one({"employee_id": employee_id, "date": td}, {"_id": 0})
+    return {"entry": e}
+
+
+@api_router.post("/mood/entry")
+async def create_mood_entry(payload: MoodEntryCreate):
+    td = datetime.now(timezone.utc).date().isoformat()
+    existing = await db.mood_entries.find_one({"employee_id": payload.employee_id, "date": td}, {"_id": 0})
+    if existing:
+        return {"already": True, "entry": existing}
+    doc = {
+        "id": new_id(), "employee_id": payload.employee_id, "score": payload.score,
+        "comment": payload.comment, "date": td, "created_at": now_iso(),
+    }
+    await db.mood_entries.insert_one(doc)
+    return {"already": False, "entry": clean(doc)}
+
+
+@api_router.get("/mood/my-history")
+async def mood_my_history(employee_id: str):
+    from datetime import timedelta
+    since = (datetime.now(timezone.utc).date() - timedelta(days=6)).isoformat()
+    entries = await db.mood_entries.find({"employee_id": employee_id, "date": {"$gte": since}}, {"_id": 0}).sort("date", 1).to_list(1000)
+    trend = [{"date": e["date"], "score": e["score"]} for e in entries]
+    avg7 = _mean([e["score"] for e in entries])
+    return {"trend": trend, "avg7": avg7, "count": len(entries)}
+
+
+@api_router.get("/mood/report")
+async def mood_report(department: Optional[str] = None):
+    from datetime import timedelta
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    entries = await db.mood_entries.find({}, {"_id": 0}).to_list(100000)
+    if department:
+        allowed = {eid for eid, e in emps.items() if e["department"] == department}
+        entries = [e for e in entries if e["employee_id"] in allowed]
+
+    by_date = {}
+    for e in entries:
+        by_date.setdefault(e["date"], []).append(e["score"])
+    trend = [{"date": d, "avg": _mean(by_date[d]), "count": len(by_date[d])} for d in sorted(by_date)]
+
+    td = datetime.now(timezone.utc).date().isoformat()
+    today_avg = _mean(by_date.get(td, []))
+    since = (datetime.now(timezone.utc).date() - timedelta(days=6)).isoformat()
+    last7 = [e["score"] for e in entries if e["date"] >= since]
+    return {
+        "trend": trend, "today_avg": today_avg, "avg7": _mean(last7),
+        "total_entries": len(entries), "today_count": len(by_date.get(td, [])),
+        "departments": SEGMENT_OPTIONS["departments"],
+    }
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -897,6 +1020,7 @@ async def on_startup():
     await seed_if_empty()
     await seed_pulses_if_empty()
     await seed_events_if_empty()
+    await seed_mood_if_empty()
 
 
 @app.on_event("shutdown")

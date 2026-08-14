@@ -18,6 +18,7 @@ export const InternalComms = () => {
   const [feed, setFeed] = useState([]);
   const [pulses, setPulses] = useState([]);
   const [events, setEvents] = useState([]);
+  const [moodToday, setMoodToday] = useState(undefined);
 
   useEffect(() => {
     api.categories().then((c) => setCategories(c.filter((x) => x.status === "active")));
@@ -28,6 +29,7 @@ export const InternalComms = () => {
       api.feed(currentEmployeeId).then(setFeed);
       api.pulseFeed(currentEmployeeId).then(setPulses);
       api.eventFeed(currentEmployeeId).then(setEvents);
+      api.moodToday(currentEmployeeId).then((r) => setMoodToday(r.entry));
     }
   }, [currentEmployeeId]);
 
@@ -39,6 +41,7 @@ export const InternalComms = () => {
     if (cat.category_type === "duyuru") navigate("/ic-iletisim/duyurular");
     else if (cat.category_type === "pulse") navigate("/ic-iletisim/pulse");
     else if (cat.category_type === "etkinlik") navigate("/ic-iletisim/etkinlik");
+    else if (cat.category_type === "gunluk_mod") navigate("/ic-iletisim/gunluk-mod");
   };
 
   return (
@@ -53,6 +56,7 @@ export const InternalComms = () => {
           const isDuyuru = cat.category_type === "duyuru";
           const isPulse = cat.category_type === "pulse";
           const isEtkinlik = cat.category_type === "etkinlik";
+          const isMood = cat.category_type === "gunluk_mod";
           const expanded = isDuyuru || isPulse || isEtkinlik;
           return (
             <button
@@ -73,6 +77,11 @@ export const InternalComms = () => {
                     <h3 className="font-heading font-bold text-slate-800 text-lg">{cat.display_name}</h3>
                     {cat.pinnable && <span className="inline-flex items-center gap-1 text-[11px] text-slate-400"><Pin className="w-3 h-3" /> Pinlenebilir</span>}
                     {isPulse && <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">Nabız anketleri</span>}
+                    {isMood && (
+                      moodToday
+                        ? <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600">Bugün paylaştın ✓</span>
+                        : <span className="inline-flex items-center gap-1 text-[11px] text-amber-600">Bugün nasılsın?</span>
+                    )}
                   </div>
                 </div>
                 <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />

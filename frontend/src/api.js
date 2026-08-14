@@ -51,4 +51,11 @@ export const api = {
   deleteEvent: (id) => http.delete(`/events/${id}`).then((r) => r.data),
   rsvpEvent: (id, d) => http.post(`/events/${id}/rsvp`, d).then((r) => r.data),
   eventReport: (id) => http.get(`/events/${id}/report`).then((r) => r.data),
+
+  moodConfig: () => http.get("/mood/config").then((r) => r.data),
+  updateMoodConfig: (d) => http.put("/mood/config", d).then((r) => r.data),
+  moodToday: (employeeId) => http.get("/mood/today", { params: { employee_id: employeeId } }).then((r) => r.data),
+  submitMood: (d) => http.post("/mood/entry", d).then((r) => r.data),
+  moodMyHistory: (employeeId) => http.get("/mood/my-history", { params: { employee_id: employeeId } }).then((r) => r.data),
+  moodReport: (department) => http.get("/mood/report", { params: department ? { department } : {} }).then((r) => r.data),
 };

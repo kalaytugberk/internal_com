@@ -13,6 +13,8 @@ import { PulseFill } from "@/pages/pulse/PulseFill";
 import { EventsFeed, EventDetail } from "@/pages/events/Events";
 import { HomePage } from "@/pages/HomePage";
 import { CalendarPage } from "@/pages/CalendarPage";
+import { MoodPage } from "@/pages/mood/MoodPage";
+import { MoodReminderBanner } from "@/components/MoodReminderBanner";
 import { AdminPanel } from "@/pages/admin/AdminPanel";
 
 const AdminRoute = ({ children }) => {
@@ -27,6 +29,7 @@ function App() {
         <BrowserRouter>
           <Shell>
             <MandatoryPulseBanner />
+            <MoodReminderBanner />
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/takim" element={<Placeholder title="Takım" subtitle="Takımınıza ait bilgiler." icon="Users" accent="bg-emerald-50 text-emerald-500" />} />
@@ -37,6 +40,7 @@ function App() {
               <Route path="/ic-iletisim/pulse/:id/fill" element={<PulseFill />} />
               <Route path="/ic-iletisim/etkinlik" element={<EventsFeed />} />
               <Route path="/ic-iletisim/etkinlik/:id" element={<EventDetail />} />
+              <Route path="/ic-iletisim/gunluk-mod" element={<MoodPage />} />
               <Route path="/ik" element={<AdminRoute><HRPage /></AdminRoute>} />
               <Route path="/takvim" element={<CalendarPage />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />

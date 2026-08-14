@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="6" time="58.888" timestamp="2026-08-14T12:53:31.087641+00:00" hostname="agent-env-d1baea4f-b33f-4f63-8a84-d0975f6f3a2d"><testcase classname="tests.test_mood.TestMoodConfig" name="test_get_config_returns_gunluk_mod" time="22.085"><failure message="requests.exceptions.ConnectTimeout: HTTPSConnectionPool(host='plena-connect.preview.emergentagent.com', port=443): Max retries exceeded with url: /api/mood/config (Caused by ConnectTimeoutError(&lt;HTTPSConnection(host='plena-connect.preview.emergentagent.com', port=443) at 0xfe224a745510&gt;, 'Connection to plena-connect.preview.emergentagent.com timed out. (connect timeout=10)'))">/root/.venv/lib/python3.11/site-packages/urllib3/connection.py:204: in _new_conn
+    sock = connection.create_connection(
+/root/.venv/lib/python3.11/site-packages/urllib3/util/connection.py:85: in create_connection
+    raise err
+/root/.venv/lib/python3.11/site-packages/urllib3/util/connection.py:73: in create_connection
+    sock.connect(sa)
+E   TimeoutError: timed out
+
+The above exception was the direct cause of the following exception:
+/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:788: in urlopen
+    response = self._make_request(
+/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:488: in _make_request
+    raise new_e
+/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:464: in _make_request
+    self._validate_conn(conn)
+/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:1106: in _validate_conn
+    conn.connect()
+/root/.venv/lib/python3.11/site-packages/urllib3/connection.py:759: in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/urllib3/connection.py:213: in _new_conn
+    raise ConnectTimeoutError(
+E   urllib3.exceptions.ConnectTimeoutError: (&lt;HTTPSConnection(host='plena-connect.preview.emergentagent.com', port=443) at 0xfe224a745510&gt;, 'Connection to plena-connect.preview.emergentagent.com timed out. (connect timeout=10)')
+
+The above exception was the direct cause of the following exception:
+/root/.venv/lib/python3.11/site-packages/requests/adapters.py:696: in send
+    resp = conn.urlopen(
+/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:842: in urlopen
+    retries = retries.increment(
+/root/.venv/lib/python3.11/site-packages/urllib3/util/retry.py:543: in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='plena-connect.preview.emergentagent.com', port=443): Max retries exceeded with url: /api/mood/config (Caused by ConnectTimeoutError(&lt;HTTPSConnection(host='plena-connect.preview.emergentagent.com', port=443) at 0xfe224a745510&gt;, 'Connection to plena-connect.preview.emergentagent.com timed out. (connect timeout=10)'))
+
+During handling of the above exception, another exception occurred:
+backend/tests/test_mood.py:21: in test_get_config_returns_gunluk_mod
+    r = requests.get(f"{API}/mood/config", timeout=10)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/api.py:87: in get
+    return request("get", url, params=params, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/api.py:71: in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/sessions.py:651: in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/sessions.py:784: in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/adapters.py:717: in send
+    raise ConnectTimeout(e, request=request)
+E   requests.exceptions.ConnectTimeout: HTTPSConnectionPool(host='plena-connect.preview.emergentagent.com', port=443): Max retries exceeded with url: /api/mood/config (Caused by ConnectTimeoutError(&lt;HTTPSConnection(host='plena-connect.preview.emergentagent.com', port=443) at 0xfe224a745510&gt;, 'Connection to plena-connect.preview.emergentagent.com timed out. (connect timeout=10)'))</failure></testcase><testcase classname="tests.test_mood.TestMoodConfig" name="test_put_config_persists" time="20.065"><failure message="requests.exceptions.ConnectTimeout: HTTPSConnectionPool(host='plena-connect.preview.emergentagent.com', port=443): Max retries exceeded with url: /api/mood/config (Caused by ConnectTimeoutError(&lt;HTTPSConnection(host='plena-connect.preview.emergentagent.com', port=443) at 0xfe2249b61450&gt;, 'Connection to plena-connect.preview.emergentagent.com timed out. (connect timeout=10)'))">/root/.venv/lib/python3.11/site-packages/urllib3/connection.py:204: in _new_conn
+    sock = connection.create_connection(
+/root/.venv/lib/python3.11/site-packages/urllib3/util/connection.py:85: in create_connection
+    raise err
+/root/.venv/lib/python3.11/site-packages/urllib3/util/connection.py:73: in create_connection
+    sock.connect(sa)
+E   TimeoutError: timed out
+
+The above exception was the direct cause of the following exception:
+/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:788: in urlopen
+    response = self._make_request(
+/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:488: in _make_request
+    raise new_e
+/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:464: in _make_request
+    self._validate_conn(conn)
+/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:1106: in _validate_conn
+    conn.connect()
+/root/.venv/lib/python3.11/site-packages/urllib3/connection.py:759: in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/urllib3/connection.py:213: in _new_conn
+    raise ConnectTimeoutError(
+E   urllib3.exceptions.ConnectTimeoutError: (&lt;HTTPSConnection(host='plena-connect.preview.emergentagent.com', port=443) at 0xfe2249b61450&gt;, 'Connection to plena-connect.preview.emergentagent.com timed out. (connect timeout=10)')
+
+The above exception was the direct cause of the following exception:
+/root/.venv/lib/python3.11/site-packages/requests/adapters.py:696: in send
+    resp = conn.urlopen(
+/root/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py:842: in urlopen
+    retries = retries.increment(
+/root/.venv/lib/python3.11/site-packages/urllib3/util/retry.py:543: in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='plena-connect.preview.emergentagent.com', port=443): Max retries exceeded with url: /api/mood/config (Caused by ConnectTimeoutError(&lt;HTTPSConnection(host='plena-connect.preview.emergentagent.com', port=443) at 0xfe2249b61450&gt;, 'Connection to plena-connect.preview.emergentagent.com timed out. (connect timeout=10)'))
+
+During handling of the above exception, another exception occurred:
+backend/tests/test_mood.py:30: in test_put_config_persists
+    original = requests.get(f"{API}/mood/config", timeout=10).json()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/api.py:87: in get
+    return request("get", url, params=params, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/api.py:71: in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/sessions.py:651: in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/sessions.py:784: in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/adapters.py:717: in send
+    raise ConnectTimeout(e, request=request)
+E   requests.exceptions.ConnectTimeout: HTTPSConnectionPool(host='plena-connect.preview.emergentagent.com', port=443): Max retries exceeded with url: /api/mood/config (Caused by ConnectTimeoutError(&lt;HTTPSConnection(host='plena-connect.preview.emergentagent.com', port=443) at 0xfe2249b61450&gt;, 'Connection to plena-connect.preview.emergentagent.com timed out. (connect timeout=10)'))</failure></testcase><testcase classname="tests.test_mood.TestMoodEntry" name="test_today_and_once_per_day" time="15.959" /><testcase classname="tests.test_mood.TestMoodEntry" name="test_my_history_only_own" time="0.171" /><testcase classname="tests.test_mood.TestMoodReportPrivacy" name="test_report_no_individual_data" time="0.151" /><testcase classname="tests.test_mood.TestMoodReportPrivacy" name="test_report_department_filter_changes_aggregates" time="0.262" /></testsuite></testsuites>
