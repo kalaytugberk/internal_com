@@ -180,6 +180,7 @@ CATEGORY_TYPES = [
     {"key": "gunluk_mod", "label": "Günlük Mod", "active": True},
     {"key": "ilan", "label": "İlanlar", "active": True},
     {"key": "avatar", "label": "Avatar Seçimi", "active": True},
+    {"key": "servis", "label": "Servis Güzergahı", "active": True},
     {"key": "anket", "label": "Anket", "active": False},
     {"key": "kudos", "label": "Kudos / Takdir", "active": False},
     {"key": "oyunlastirma", "label": "Oyunlaştırma", "active": False},
@@ -1358,6 +1359,215 @@ async def avatar_report():
     return {"concepts": rows, "total_selected": len(selected), "total_employees": len(emps)}
 
 
+# ----------------------------- Servis Güzergahı -----------------------------
+
+class RouteStop(BaseModel):
+    id: str = Field(default_factory=new_id)
+    name: str
+    time: str = ""                    # "08:15"
+    location: Optional[str] = None    # adres / harita arama metni
+
+
+class RouteCreate(BaseModel):
+    name: str
+    direction: str = "gidis"          # gidis | donus
+    city: str = ""                    # servis lokasyonu (şehir)
+    vehicle_plate: str = ""
+    driver_name: str = ""
+    driver_phone: str = ""
+    stops: List[RouteStop] = []
+    status: str = "active"            # active | passive
+
+
+class RouteUpdate(BaseModel):
+    name: Optional[str] = None
+    direction: Optional[str] = None
+    city: Optional[str] = None
+    vehicle_plate: Optional[str] = None
+    driver_name: Optional[str] = None
+    driver_phone: Optional[str] = None
+    stops: Optional[List[RouteStop]] = None
+    status: Optional[str] = None
+
+
+class RouteRegister(BaseModel):
+    employee_id: str
+    stop_id: Optional[str] = None
+
+
+async def seed_routes_if_empty():
+    if await db.categories.count_documents({"category_type": "servis"}) > 0:
+        return
+    rcount = await db.categories.count_documents({})
+    rcat_id = new_id()
+    await db.categories.insert_one({
+        "id": rcat_id, "category_type": "servis", "display_name": "Servis Güzergahı",
+        "icon": "Bus", "icon_image": None, "status": "active",
+        "audience": Audience().model_dump(),
+        "reporting_levels": ["sirket", "organizasyon"], "content_type": "eylem",
+        "pinnable": False, "order": rcount, "created_at": now_iso(),
+    })
+    routes = [
+        {
+            "name": "Kadıköy Hattı", "direction": "gidis", "city": "İstanbul",
+            "vehicle_plate": "34 PLN 001", "driver_name": "Hasan Demir", "driver_phone": "0532 111 22 33",
+            "stops": [
+                {"name": "Kadıköy Meydan", "time": "07:45", "location": "Kadıköy İskele, İstanbul"},
+                {"name": "Söğütlüçeşme", "time": "07:55", "location": "Söğütlüçeşme, İstanbul"},
+                {"name": "Acıbadem", "time": "08:10", "location": "Acıbadem, İstanbul"},
+                {"name": "Merkez Ofis", "time": "08:30", "location": "Maslak, İstanbul"},
+            ],
+        },
+        {
+            "name": "Bağcılar Hattı", "direction": "gidis", "city": "İstanbul",
+            "vehicle_plate": "34 PLN 002", "driver_name": "Murat Yıldız", "driver_phone": "0533 444 55 66",
+            "stops": [
+                {"name": "Bağcılar Meydan", "time": "07:30", "location": "Bağcılar Meydan, İstanbul"},
+                {"name": "Güneşli", "time": "07:45", "location": "Güneşli, İstanbul"},
+                {"name": "Merkez Ofis", "time": "08:30", "location": "Maslak, İstanbul"},
+            ],
+        },
+    ]
+    for r in routes:
+        stops = [{"id": new_id(), **s} for s in r["stops"]]
+        await db.routes.insert_one({
+            "id": new_id(), "category_id": rcat_id, "name": r["name"], "direction": r["direction"],
+            "city": r["city"], "vehicle_plate": r["vehicle_plate"], "driver_name": r["driver_name"],
+            "driver_phone": r["driver_phone"], "stops": stops, "status": "active",
+            "created_at": now_iso(), "updated_at": now_iso(),
+        })
+
+
+def _stop_name(route, stop_id):
+    for s in route.get("stops", []):
+        if s.get("id") == stop_id:
+            return s.get("name")
+    return None
+
+
+@api_router.get("/routes")
+async def list_routes():
+    items = await db.routes.find({}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+    for r in items:
+        regs = await db.route_registrations.find({"route_id": r["id"]}, {"_id": 0}).to_list(10000)
+        r["reg_count"] = len(regs)
+    return items
+
+
+@api_router.post("/routes")
+async def create_route(payload: RouteCreate):
+    cat = await db.categories.find_one({"category_type": "servis"}, {"_id": 0})
+    data = payload.model_dump()
+    data["stops"] = [{"id": s.get("id") or new_id(), **{k: v for k, v in s.items() if k != "id"}} for s in data.get("stops", [])]
+    doc = {"id": new_id(), "category_id": cat["id"] if cat else None, **data,
+           "created_at": now_iso(), "updated_at": now_iso()}
+    await db.routes.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.get("/routes/feed")
+async def routes_feed(employee_id: str, city: Optional[str] = None):
+    emp = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not emp:
+        raise HTTPException(404, "Çalışan bulunamadı")
+    query = {"status": "active"}
+    if city:
+        query["city"] = city
+    routes = await db.routes.find(query, {"_id": 0}).sort("created_at", 1).to_list(1000)
+    result = []
+    for r in routes:
+        regs = await db.route_registrations.find({"route_id": r["id"]}, {"_id": 0}).to_list(10000)
+        r["reg_count"] = len(regs)
+        mine = next((x for x in regs if x["employee_id"] == employee_id), None)
+        r["my_registration"] = {"stop_id": mine["stop_id"], "stop_name": _stop_name(r, mine["stop_id"])} if mine else None
+        result.append(r)
+    return result
+
+
+@api_router.get("/routes/cities")
+async def route_cities():
+    cities = await db.routes.distinct("city", {"status": "active"})
+    return [c for c in cities if c]
+
+
+@api_router.get("/routes/report")
+async def routes_report():
+    routes = await db.routes.find({}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    rows = []
+    total_reg = 0
+    for r in routes:
+        regs = await db.route_registrations.find({"route_id": r["id"]}, {"_id": 0}).to_list(10000)
+        total_reg += len(regs)
+        stop_map = {s["id"]: {"stop_id": s["id"], "name": s["name"], "time": s.get("time", ""), "count": 0} for s in r.get("stops", [])}
+        for reg in regs:
+            if reg.get("stop_id") in stop_map:
+                stop_map[reg["stop_id"]]["count"] += 1
+        rows.append({
+            "id": r["id"], "name": r["name"], "city": r.get("city", ""),
+            "direction": r.get("direction", "gidis"), "reg_count": len(regs),
+            "stops": list(stop_map.values()),
+        })
+    return {"routes": rows, "total_registrations": total_reg, "total_employees": len(emps)}
+
+
+@api_router.get("/routes/{rid}")
+async def get_route(rid: str, employee_id: Optional[str] = None):
+    doc = await db.routes.find_one({"id": rid}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Güzergah bulunamadı")
+    regs = await db.route_registrations.find({"route_id": rid}, {"_id": 0}).to_list(10000)
+    doc["reg_count"] = len(regs)
+    if employee_id:
+        mine = next((x for x in regs if x["employee_id"] == employee_id), None)
+        doc["my_registration"] = {"stop_id": mine["stop_id"], "stop_name": _stop_name(doc, mine["stop_id"])} if mine else None
+    return doc
+
+
+@api_router.put("/routes/{rid}")
+async def update_route(rid: str, payload: RouteUpdate):
+    update = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
+    if "stops" in update:
+        update["stops"] = [{"id": s.get("id") or new_id(), **{k: v for k, v in s.items() if k != "id"}} for s in update["stops"]]
+    update["updated_at"] = now_iso()
+    res = await db.routes.update_one({"id": rid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Güzergah bulunamadı")
+    return await db.routes.find_one({"id": rid}, {"_id": 0})
+
+
+@api_router.delete("/routes/{rid}")
+async def delete_route(rid: str):
+    await db.routes.delete_one({"id": rid})
+    await db.route_registrations.delete_many({"route_id": rid})
+    return {"ok": True}
+
+
+@api_router.post("/routes/{rid}/register")
+async def register_route(rid: str, payload: RouteRegister):
+    route = await db.routes.find_one({"id": rid}, {"_id": 0})
+    if not route:
+        raise HTTPException(404, "Güzergah bulunamadı")
+    if payload.stop_id and not _stop_name(route, payload.stop_id):
+        raise HTTPException(400, "Geçersiz durak")
+    await db.route_registrations.update_one(
+        {"route_id": rid, "employee_id": payload.employee_id},
+        {"$set": {"stop_id": payload.stop_id, "updated_at": now_iso()},
+         "$setOnInsert": {"id": new_id()}},
+        upsert=True,
+    )
+    regs = await db.route_registrations.find({"route_id": rid}, {"_id": 0}).to_list(10000)
+    return {"ok": True, "reg_count": len(regs),
+            "my_registration": {"stop_id": payload.stop_id, "stop_name": _stop_name(route, payload.stop_id)}}
+
+
+@api_router.post("/routes/{rid}/unregister")
+async def unregister_route(rid: str, payload: RouteRegister):
+    await db.route_registrations.delete_one({"route_id": rid, "employee_id": payload.employee_id})
+    regs = await db.route_registrations.find({"route_id": rid}, {"_id": 0}).to_list(10000)
+    return {"ok": True, "reg_count": len(regs), "my_registration": None}
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -1380,6 +1590,7 @@ async def on_startup():
     await seed_mood_if_empty()
     await seed_listings_if_empty()
     await seed_avatars_if_empty()
+    await seed_routes_if_empty()
 
 
 @app.on_event("shutdown")

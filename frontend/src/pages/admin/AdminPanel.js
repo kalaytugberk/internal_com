@@ -7,7 +7,8 @@ import { EventsManager } from "@/pages/events/EventsManager";
 import { MoodSettings } from "@/pages/mood/MoodSettings";
 import { ListingsManager } from "@/pages/listings/ListingsManager";
 import { AvatarConcepts } from "@/pages/avatar/AvatarConcepts";
-import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile, Tag, Sparkles } from "lucide-react";
+import { RoutesManager } from "@/pages/routes/RoutesManager";
+import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile, Tag, Sparkles, Bus } from "lucide-react";
 
 const TABS = [
   { key: "categories", label: "Kategori Yönetimi", icon: Layers },
@@ -17,6 +18,7 @@ const TABS = [
   { key: "mood", label: "Günlük Mod", icon: Smile },
   { key: "listings", label: "İlanlar", icon: Tag },
   { key: "avatar", label: "Avatar Seçimi", icon: Sparkles },
+  { key: "routes", label: "Servis Güzergahı", icon: Bus },
 ];
 
 export const AdminPanel = () => {
@@ -53,6 +55,7 @@ export const AdminPanel = () => {
       {tab === "mood" && <MoodSettings />}
       {tab === "listings" && <ListingsManager />}
       {tab === "avatar" && <AvatarConcepts />}
+      {tab === "routes" && <RoutesManager />}
     </div>
   );
 };

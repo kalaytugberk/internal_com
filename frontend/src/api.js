@@ -81,4 +81,15 @@ export const api = {
   conceptsFeed: (employeeId) => http.get("/avatar/concepts/feed", { params: { employee_id: employeeId } }).then((r) => r.data),
   selectAvatar: (d) => http.post("/avatar/select", d).then((r) => r.data),
   avatarReport: () => http.get("/avatar/report").then((r) => r.data),
+
+  routes: () => http.get("/routes").then((r) => r.data),
+  routesFeed: (employeeId, city) => http.get("/routes/feed", { params: { employee_id: employeeId, ...(city ? { city } : {}) } }).then((r) => r.data),
+  routeCities: () => http.get("/routes/cities").then((r) => r.data),
+  route: (id, employeeId) => http.get(`/routes/${id}`, { params: employeeId ? { employee_id: employeeId } : {} }).then((r) => r.data),
+  createRoute: (d) => http.post("/routes", d).then((r) => r.data),
+  updateRoute: (id, d) => http.put(`/routes/${id}`, d).then((r) => r.data),
+  deleteRoute: (id) => http.delete(`/routes/${id}`).then((r) => r.data),
+  registerRoute: (id, d) => http.post(`/routes/${id}/register`, d).then((r) => r.data),
+  unregisterRoute: (id, d) => http.post(`/routes/${id}/unregister`, d).then((r) => r.data),
+  routesReport: () => http.get("/routes/report").then((r) => r.data),
 };

@@ -44,6 +44,7 @@ export const InternalComms = () => {
     else if (cat.category_type === "gunluk_mod") navigate("/ic-iletisim/gunluk-mod");
     else if (cat.category_type === "ilan") navigate("/ic-iletisim/ilanlar");
     else if (cat.category_type === "avatar") navigate("/ic-iletisim/avatar");
+    else if (cat.category_type === "servis") navigate("/ic-iletisim/servis");
   };
 
   return (
@@ -59,6 +60,7 @@ export const InternalComms = () => {
           const isPulse = cat.category_type === "pulse";
           const isEtkinlik = cat.category_type === "etkinlik";
           const isMood = cat.category_type === "gunluk_mod";
+          const isServis = cat.category_type === "servis";
           const expanded = isDuyuru || isPulse || isEtkinlik;
           return (
             <button
@@ -79,6 +81,7 @@ export const InternalComms = () => {
                     <h3 className="font-heading font-bold text-slate-800 text-lg">{cat.display_name}</h3>
                     {cat.pinnable && <span className="inline-flex items-center gap-1 text-[11px] text-slate-400"><Pin className="w-3 h-3" /> Pinlenebilir</span>}
                     {isPulse && <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">Nabız anketleri</span>}
+                    {isServis && <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">Servis güzergahları & saatleri</span>}
                     {isMood && (
                       moodToday
                         ? <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600">Bugün paylaştın ✓</span>

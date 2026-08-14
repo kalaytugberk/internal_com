@@ -6,6 +6,7 @@ export const ICON_CHOICES = [
   "MessageSquare", "Bell", "Star", "Gift", "Trophy", "Briefcase",
   "Heart", "Flag", "BookOpen", "Coffee", "PartyPopper", "Lightbulb",
   "Target", "Rocket", "FileText", "Handshake", "GraduationCap", "Building2",
+  "Bus", "MapPin", "Route", "Navigation",
 ];
 
 export const Icon = ({ name, className, ...props }) => {

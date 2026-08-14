@@ -43,6 +43,8 @@ Plena (İK/HR SaaS) için "İç İletişim" modülü. 20+ içerik kategorisini t
 
 - ✅ **Avatar Seçimi** (2026-08-14): 5. kategori. Kategori "alt öğe" mekanizması yeniden kullanıldı — çoklu Konsept, her biri kendi hedef kitlesiyle (boşsa üst kategoriden miras). Konsept başına 12 DiceBear avatarı otomatik üretilir. Çalışan yalnızca hedef kitlesine uyan konseptleri görür (örn. "Yönetici Özel" yalnızca Yönetici/Direktör), avatar seçip profiline kaydeder (sınırsız değişiklik), seçim üst menü profil avatarına yansır. Admin: konsept CRUD + galeri (avatar ekle/sil) + popülerlik raporu. Onay akışı yok. Testing: backend 11/11, frontend 100% E2E.
 
+- ✅ **Servis Güzergahı** (2026-08-14): 7. kategori tipi (`servis`). Admin: güzergah CRUD — ad, yön (gidiş/dönüş), lokasyon (şehir), araç/plaka, şoför (ad+telefon), sıralı duraklar (ad + saat + opsiyonel harita adresi). Çalışan: TÜM aktif güzergahları görür (şehir filtre chip'leri + güzergah/durak arama), detayda araç/şoför bilgisi + gömülü Google Maps iframe (anahtarsız, `output=embed`) + durak zaman çizelgesi; bir durağı seçip "Bu durağı kullanıyorum" ile kayıt olur/kaydı kaldırır. Admin raporu: güzergah bazında kayıt sayısı (bar) + durak bazında dağılım. Koleksiyonlar: `routes`, `route_registrations`. Testing (iteration_9): backend 9/9, frontend 100% E2E.
+
 ## Backlog / Remaining
 - P1: Diğer kategori tipleri (Etkinlik, Kudos, Oyunlaştırma, İlan...)
 - P1: Duyuru için raporlama ekranları
