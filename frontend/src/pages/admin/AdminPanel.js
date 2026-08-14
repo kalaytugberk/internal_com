@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { CategoriesManager } from "@/pages/admin/CategoriesManager";
 import { AnnouncementsManager } from "@/pages/admin/AnnouncementsManager";
 import { PulsesManager } from "@/pages/pulse/PulsesManager";
-import { Layers, Megaphone, ChevronLeft, Activity } from "lucide-react";
+import { EventsManager } from "@/pages/events/EventsManager";
+import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays } from "lucide-react";
 
 const TABS = [
   { key: "categories", label: "Kategori Yönetimi", icon: Layers },
   { key: "announcements", label: "Duyuru Yönetimi", icon: Megaphone },
   { key: "pulse", label: "Pulse Anketleri", icon: Activity },
+  { key: "events", label: "Etkinlikler", icon: CalendarDays },
 ];
 
 export const AdminPanel = () => {
@@ -41,6 +43,7 @@ export const AdminPanel = () => {
       {tab === "categories" && <CategoriesManager />}
       {tab === "announcements" && <AnnouncementsManager />}
       {tab === "pulse" && <PulsesManager />}
+      {tab === "events" && <EventsManager />}
     </div>
   );
 };

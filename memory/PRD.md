@@ -34,6 +34,8 @@ Plena (İK/HR SaaS) için "İç İletişim" modülü. 20+ içerik kategorisini t
 - ✅ İK sayfası (kart grid) eklendi; "İç İletişim Platformu" kartı modüle giriş yapar; İK sekmesi yalnızca admin'e görünür
 - ✅ **Pulse Anketi kategorisi** eklendi (2026-08-14): Kategori motoru + Segmentasyon bileşeni yeniden kullanıldı. Admin: soru havuzu (1-5 sert limit), skor/emoji & tek seçim tipleri, opsiyonel yorum, zorunlu/anonim/sıklık/başlangıç ayarları, hedef kitle. Raporlama: Şirket (trend), Organizasyon Birimi (departman bar), Kişi Bazlı (anonimse gizli), soru bazlı trend/dağılım + yorumlar, yanıt oranı. Çalışan: pulse akışı (Doldurulmadı/Dolduruldu rozeti), zorunlu pulse banner'ı (görsel), adım adım doldurma (emoji yüzler + radio + yorum), teşekkür ekranı, kişisel skor trendi. Testing agent: backend 23/23, frontend %100 (banner refresh bug'ı düzeltildi).
 
+- ✅ **4 yeni özellik** eklendi (2026-08-14): (1) Ana Sayfa "Almam Gereken Aksiyonlar" widget'ı — çalışanın doldurmadığı zorunlu pulse'ları + yaklaşan etkinlikleri gösterir. (2) Pulse Karşılaştırma — rapora eklenen sekme, iki tarih aralığının ortalama skorlarını yan yana + fark + trend. (3) Rapor Dışa Aktarma — pulse raporunu departman kırılımıyla CSV olarak indirir. (4) Etkinlik (RSVP) kategorisi — 3. aktif kart; admin CRUD + RSVP sayaçları, çalışan feed + detay + Katılıyorum/Belki/Katılmıyorum. Testing agent (iteration_3+4): backend 100%, frontend 100% (AdminPanel Etkinlikler tab bug'ı düzeltildi).
+
 ## Backlog / Remaining
 - P1: Diğer kategori tipleri (Etkinlik, Kudos, Oyunlaştırma, İlan...)
 - P1: Duyuru için raporlama ekranları

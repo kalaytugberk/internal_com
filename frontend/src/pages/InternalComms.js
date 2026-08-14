@@ -6,7 +6,6 @@ import { Icon } from "@/lib/icons";
 import { ArrowRight, Pin, Lock } from "lucide-react";
 
 const FUTURE = [
-  { label: "Etkinlikler", icon: "Calendar" },
   { label: "Kudos / Takdir", icon: "Award" },
   { label: "Oyunlaştırma", icon: "Trophy" },
   { label: "İç İlanlar", icon: "Briefcase" },
@@ -18,6 +17,7 @@ export const InternalComms = () => {
   const [categories, setCategories] = useState([]);
   const [feed, setFeed] = useState([]);
   const [pulses, setPulses] = useState([]);
+  const [events, setEvents] = useState([]);
 
   useEffect(() => {
     api.categories().then((c) => setCategories(c.filter((x) => x.status === "active")));
@@ -27,15 +27,18 @@ export const InternalComms = () => {
     if (currentEmployeeId) {
       api.feed(currentEmployeeId).then(setFeed);
       api.pulseFeed(currentEmployeeId).then(setPulses);
+      api.eventFeed(currentEmployeeId).then(setEvents);
     }
   }, [currentEmployeeId]);
 
   const annPreview = useMemo(() => feed.slice(0, 3), [feed]);
   const pulsePreview = useMemo(() => pulses.slice(0, 3), [pulses]);
+  const eventPreview = useMemo(() => events.slice(0, 3), [events]);
 
   const nav = (cat) => {
     if (cat.category_type === "duyuru") navigate("/ic-iletisim/duyurular");
     else if (cat.category_type === "pulse") navigate("/ic-iletisim/pulse");
+    else if (cat.category_type === "etkinlik") navigate("/ic-iletisim/etkinlik");
   };
 
   return (
@@ -49,7 +52,8 @@ export const InternalComms = () => {
         {categories.map((cat) => {
           const isDuyuru = cat.category_type === "duyuru";
           const isPulse = cat.category_type === "pulse";
-          const expanded = isDuyuru || isPulse;
+          const isEtkinlik = cat.category_type === "etkinlik";
+          const expanded = isDuyuru || isPulse || isEtkinlik;
           return (
             <button
               key={cat.id}
@@ -96,6 +100,20 @@ export const InternalComms = () => {
                       {p.filled
                         ? <span className="text-[11px] rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-700 shrink-0">Dolduruldu</span>
                         : <span className="text-[11px] rounded-full px-2 py-0.5 bg-amber-100 text-amber-700 shrink-0">Doldurulmadı</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {isEtkinlik && (
+                <div className="mt-5 space-y-2.5">
+                  {eventPreview.length === 0 && <p className="text-sm text-slate-400 italic">Yaklaşan etkinlik yok.</p>}
+                  {eventPreview.map((e) => (
+                    <div key={e.id} className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-2.5">
+                      <span className="text-sm text-slate-600 truncate flex-1">{e.title}</span>
+                      {e.my_rsvp
+                        ? <span className="text-[11px] rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-700 shrink-0">Yanıtlandı</span>
+                        : <span className="text-[11px] rounded-full px-2 py-0.5 bg-amber-100 text-amber-700 shrink-0">Yanıt bekliyor</span>}
                     </div>
                   ))}
                 </div>

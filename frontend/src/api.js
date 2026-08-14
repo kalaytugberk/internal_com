@@ -41,4 +41,13 @@ export const api = {
   respondPulse: (id, d) => http.post(`/pulses/${id}/respond`, d).then((r) => r.data),
   pulseReport: (id) => http.get(`/pulses/${id}/report`).then((r) => r.data),
   pulseMyHistory: (id, employeeId) => http.get(`/pulses/${id}/my-history`, { params: { employee_id: employeeId } }).then((r) => r.data),
+  pulseCompare: (id, params) => http.get(`/pulses/${id}/compare`, { params }).then((r) => r.data),
+
+  events: () => http.get("/events").then((r) => r.data),
+  eventFeed: (employeeId) => http.get("/events/feed", { params: { employee_id: employeeId } }).then((r) => r.data),
+  event: (id, employeeId) => http.get(`/events/${id}`, { params: employeeId ? { employee_id: employeeId } : {} }).then((r) => r.data),
+  createEvent: (d) => http.post("/events", d).then((r) => r.data),
+  updateEvent: (id, d) => http.put(`/events/${id}`, d).then((r) => r.data),
+  deleteEvent: (id) => http.delete(`/events/${id}`).then((r) => r.data),
+  rsvpEvent: (id, d) => http.post(`/events/${id}/rsvp`, d).then((r) => r.data),
 };

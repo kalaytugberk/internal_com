@@ -144,12 +144,39 @@ class PulseResponseCreate(BaseModel):
     answers: List[PulseAnswer] = []
 
 
+class RSVPCreate(BaseModel):
+    employee_id: str
+    response: str
+
+
+class EventCreate(BaseModel):
+    title: str
+    description: str = ""
+    image: Optional[str] = None
+    location: str = ""
+    event_date: Optional[str] = None
+    audience: Audience = Field(default_factory=Audience)
+    status: str = "yayinda"        # taslak | yayinda | pasif
+    allow_maybe: bool = True
+
+
+class EventUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    image: Optional[str] = None
+    location: Optional[str] = None
+    event_date: Optional[str] = None
+    audience: Optional[Audience] = None
+    status: Optional[str] = None
+    allow_maybe: Optional[bool] = None
+
+
 # ----------------------------- Static / Seed data -----------------------------
 
 CATEGORY_TYPES = [
     {"key": "duyuru", "label": "Duyuru", "active": True},
     {"key": "pulse", "label": "Pulse Anketi", "active": True},
-    {"key": "etkinlik", "label": "Etkinlik", "active": False},
+    {"key": "etkinlik", "label": "Etkinlik", "active": True},
     {"key": "anket", "label": "Anket", "active": False},
     {"key": "kudos", "label": "Kudos / Takdir", "active": False},
     {"key": "oyunlastirma", "label": "Oyunlaştırma", "active": False},
@@ -673,6 +700,157 @@ async def pulse_my_history(pid: str, employee_id: str):
     return {"pulse_title": pulse["title"], "history": history}
 
 
+@api_router.get("/pulses/{pid}/compare")
+async def pulse_compare(pid: str, a_start: str, a_end: str, b_start: str, b_end: str):
+    pulse = await db.pulses.find_one({"id": pid}, {"_id": 0})
+    if not pulse:
+        raise HTTPException(404, "Pulse bulunamadı")
+    responses = await db.pulse_responses.find({"pulse_id": pid}, {"_id": 0}).sort("created_at", 1).to_list(100000)
+
+    def avg_in(start, end):
+        vals = []
+        for r in responses:
+            d = r["created_at"][:10]
+            if start <= d <= end:
+                for a in r["answers"]:
+                    if a.get("score") is not None:
+                        vals.append(a["score"])
+        return {"start": start, "end": end, "avg": _mean(vals), "count": len(vals)}
+
+    by_date = {}
+    for r in responses:
+        d = r["created_at"][:10]
+        for a in r["answers"]:
+            if a.get("score") is not None:
+                by_date.setdefault(d, []).append(a["score"])
+    trend = [{"date": d, "avg": _mean(by_date[d])} for d in sorted(by_date)]
+    a = avg_in(a_start, a_end)
+    b = avg_in(b_start, b_end)
+    return {"a": a, "b": b, "diff": round(b["avg"] - a["avg"], 2), "trend": trend}
+
+
+def _rsvp_counts(rsvps):
+    counts = {"katiliyorum": 0, "katilmiyorum": 0, "belki": 0}
+    for r in rsvps:
+        counts[r["response"]] = counts.get(r["response"], 0) + 1
+    return counts
+
+
+async def seed_events_if_empty():
+    if await db.categories.count_documents({"category_type": "etkinlik"}) > 0:
+        return
+    ecount = await db.categories.count_documents({})
+    ecat_id = new_id()
+    await db.categories.insert_one({
+        "id": ecat_id, "category_type": "etkinlik", "display_name": "Etkinlikler",
+        "icon": "Calendar", "icon_image": None, "status": "active",
+        "audience": Audience().model_dump(),
+        "reporting_levels": ["kisi", "sirket"], "content_type": "eylem",
+        "pinnable": True, "order": ecount, "created_at": now_iso(),
+    })
+    events = [
+        {"title": "Doğa ile Baş Başa — Longoz Ormanları Gezisi", "description": "Doğaya merhaba demeye hazır mısın? Sen de bizimle bu yolculuğa hazırsan hemen aksiyona geç! Rehber eşliğinde doğa yürüyüşü, ikram ve ekip aktiviteleri seni bekliyor.", "location": "İğneada Longoz Ormanları Milli Parkı", "event_date": "2026-08-26T09:00:00", "image": "https://images.unsplash.com/photo-1592859600972-1b0834d83747?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200"},
+        {"title": "Q3 Genel Değerlendirme Toplantısı", "description": "Üçüncü çeyrek sonuçlarını, hedeflerimizi ve gelecek dönem planlarımızı birlikte değerlendireceğimiz genel toplantımıza tüm ekiplerimiz davetlidir.", "location": "Merkez Ofis — Konferans Salonu", "event_date": "2026-09-05T14:00:00", "image": "https://images.unsplash.com/photo-1517048676732-d65bc937f952?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200"},
+    ]
+    ev_ids = []
+    for e in events:
+        eid = new_id()
+        ev_ids.append(eid)
+        await db.events.insert_one({
+            "id": eid, "category_id": ecat_id, **e,
+            "audience": Audience().model_dump(), "status": "yayinda",
+            "allow_maybe": True, "pinned": False,
+            "created_at": now_iso(), "updated_at": now_iso(),
+        })
+    emps = await db.employees.find({}, {"_id": 0}).to_list(1000)
+    responses = ["katiliyorum", "katiliyorum", "belki", "katilmiyorum"]
+    for i, emp in enumerate(emps[3:7]):
+        await db.rsvps.insert_one({
+            "id": new_id(), "event_id": ev_ids[0], "employee_id": emp["id"],
+            "response": responses[i % len(responses)], "updated_at": now_iso(),
+        })
+
+
+@api_router.get("/events")
+async def list_events():
+    items = await db.events.find({}, {"_id": 0}).sort("event_date", 1).to_list(1000)
+    for e in items:
+        rsvps = await db.rsvps.find({"event_id": e["id"]}, {"_id": 0}).to_list(10000)
+        e["rsvp_counts"] = _rsvp_counts(rsvps)
+    return items
+
+
+@api_router.post("/events")
+async def create_event(payload: EventCreate):
+    cat = await db.categories.find_one({"category_type": "etkinlik"}, {"_id": 0})
+    doc = {"id": new_id(), "category_id": cat["id"] if cat else None, **payload.model_dump(),
+           "pinned": False, "created_at": now_iso(), "updated_at": now_iso()}
+    await db.events.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.get("/events/feed")
+async def events_feed(employee_id: str):
+    emp = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not emp:
+        raise HTTPException(404, "Çalışan bulunamadı")
+    published = await db.events.find({"status": "yayinda"}, {"_id": 0}).sort("event_date", 1).to_list(1000)
+    result = []
+    for e in published:
+        if employee_matches(emp, e.get("audience")):
+            rsvps = await db.rsvps.find({"event_id": e["id"]}, {"_id": 0}).to_list(10000)
+            e["rsvp_counts"] = _rsvp_counts(rsvps)
+            mine = next((r for r in rsvps if r["employee_id"] == employee_id), None)
+            e["my_rsvp"] = mine["response"] if mine else None
+            result.append(e)
+    return result
+
+
+@api_router.get("/events/{eid}")
+async def get_event(eid: str, employee_id: Optional[str] = None):
+    doc = await db.events.find_one({"id": eid}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Etkinlik bulunamadı")
+    rsvps = await db.rsvps.find({"event_id": eid}, {"_id": 0}).to_list(10000)
+    doc["rsvp_counts"] = _rsvp_counts(rsvps)
+    if employee_id:
+        mine = next((r for r in rsvps if r["employee_id"] == employee_id), None)
+        doc["my_rsvp"] = mine["response"] if mine else None
+    return doc
+
+
+@api_router.put("/events/{eid}")
+async def update_event(eid: str, payload: EventUpdate):
+    update = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
+    update["updated_at"] = now_iso()
+    res = await db.events.update_one({"id": eid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Etkinlik bulunamadı")
+    return await db.events.find_one({"id": eid}, {"_id": 0})
+
+
+@api_router.delete("/events/{eid}")
+async def delete_event(eid: str):
+    await db.events.delete_one({"id": eid})
+    await db.rsvps.delete_many({"event_id": eid})
+    return {"ok": True}
+
+
+@api_router.post("/events/{eid}/rsvp")
+async def rsvp_event(eid: str, payload: RSVPCreate):
+    ev = await db.events.find_one({"id": eid}, {"_id": 0})
+    if not ev:
+        raise HTTPException(404, "Etkinlik bulunamadı")
+    await db.rsvps.update_one(
+        {"event_id": eid, "employee_id": payload.employee_id},
+        {"$set": {"response": payload.response, "updated_at": now_iso()},
+         "$setOnInsert": {"id": new_id()}},
+        upsert=True,
+    )
+    rsvps = await db.rsvps.find({"event_id": eid}, {"_id": 0}).to_list(10000)
+    return {"ok": True, "rsvp_counts": _rsvp_counts(rsvps), "my_rsvp": payload.response}
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -691,6 +869,7 @@ logger = logging.getLogger(__name__)
 async def on_startup():
     await seed_if_empty()
     await seed_pulses_if_empty()
+    await seed_events_if_empty()
 
 
 @app.on_event("shutdown")

@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@/api";
-import { ChevronLeft, EyeOff, Users, Building2, User } from "lucide-react";
+import { ChevronLeft, EyeOff, Users, Building2, User, Download, GitCompare } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Cell,
 } from "recharts";
@@ -9,6 +13,7 @@ const TABS = [
   { key: "sirket", label: "Şirket", icon: Building2 },
   { key: "org", label: "Organizasyon Birimi", icon: Users },
   { key: "kisi", label: "Kişi Bazlı", icon: User },
+  { key: "compare", label: "Karşılaştırma", icon: GitCompare },
 ];
 const BAR_COLORS = ["#3B82F6", "#0D9488", "#DB2777", "#CA8A04", "#9333EA"];
 
@@ -22,14 +27,49 @@ export const PulseReport = ({ pulseId, onBack }) => {
 
   const visibleTabs = TABS.filter((t) => !(t.key === "kisi" && data.anonymous));
 
+  const exportCsv = () => {
+    const rows = [];
+    rows.push(["Pulse", data.pulse.title]);
+    rows.push(["Anonim", data.anonymous ? "Evet" : "Hayır"]);
+    rows.push(["Yanıt Oranı", `%${data.response_rate}`]);
+    rows.push(["Yanıtlayan", `${data.response_count}/${data.target_count}`]);
+    rows.push(["Şirket Ortalaması", data.company.avg]);
+    rows.push([]);
+    rows.push(["DEPARTMAN KIRILIMI", "Ortalama", "Yanıt Sayısı"]);
+    data.org_units.forEach((o) => rows.push([o.department, o.avg, o.count]));
+    rows.push([]);
+    data.questions.forEach((q, i) => {
+      rows.push([`SORU ${i + 1}`, q.text]);
+      if (q.type === "skor") {
+        rows.push(["Ortalama Skor", q.overall_avg]);
+        q.trend.forEach((t) => rows.push([t.date, t.avg]));
+      } else {
+        q.distribution.forEach((d) => rows.push([d.option, `%${d.percent}`, d.count]));
+      }
+      rows.push([]);
+    });
+    const csv = rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pulse-rapor-${data.pulse.title.replace(/\s+/g, "_")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Rapor CSV olarak indirildi");
+  };
+
   return (
     <div data-testid="pulse-report">
       <button data-testid="report-back" onClick={onBack} className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-3">
         <ChevronLeft className="w-4 h-4" /> Pulse Listesi
       </button>
-      <div className="flex items-center gap-3 flex-wrap">
-        <h2 className="font-heading font-bold text-2xl text-slate-800">{data.pulse.title}</h2>
-        {data.anonymous && <span className="text-xs rounded-full px-2.5 py-1 bg-slate-100 text-slate-500 flex items-center gap-1"><EyeOff className="w-3.5 h-3.5" /> Anonim</span>}
+      <div className="flex items-center gap-3 flex-wrap justify-between">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h2 className="font-heading font-bold text-2xl text-slate-800">{data.pulse.title}</h2>
+          {data.anonymous && <span className="text-xs rounded-full px-2.5 py-1 bg-slate-100 text-slate-500 flex items-center gap-1"><EyeOff className="w-3.5 h-3.5" /> Anonim</span>}
+        </div>
+        <Button variant="outline" size="sm" data-testid="report-export" onClick={exportCsv}><Download className="w-4 h-4 mr-1.5" /> Dışa Aktar (CSV)</Button>
       </div>
 
       {/* Summary stats */}
@@ -109,6 +149,8 @@ export const PulseReport = ({ pulseId, onBack }) => {
           )}
         </Card>
       )}
+
+      {tab === "compare" && <CompareView pulseId={data.pulse.id} trend={data.company.trend} />}
     </div>
   );
 };
@@ -179,3 +221,74 @@ const QuestionBlock = ({ q }) => (
     )}
   </Card>
 );
+
+
+const CompareView = ({ pulseId, trend }) => {
+  const dates = (trend || []).map((t) => t.date);
+  const first = dates[0] || "2026-07-01";
+  const last = dates[dates.length - 1] || "2026-08-31";
+  const mid = dates[Math.floor(dates.length / 2)] || first;
+
+  const [aStart, setAStart] = useState(first);
+  const [aEnd, setAEnd] = useState(mid);
+  const [bStart, setBStart] = useState(mid);
+  const [bEnd, setBEnd] = useState(last);
+  const [res, setRes] = useState(null);
+
+  const run = () => {
+    api.pulseCompare(pulseId, { a_start: aStart, a_end: aEnd, b_start: bStart, b_end: bEnd })
+      .then(setRes)
+      .catch(() => toast.error("Karşılaştırma yapılamadı"));
+  };
+
+  useEffect(() => { run(); /* initial */ }, []); // eslint-disable-line
+
+  return (
+    <div className="space-y-6">
+      <Card title="İki Dönemi Karşılaştır">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+            <p className="font-semibold text-blue-700 mb-3">Dönem A</p>
+            <div className="flex gap-3">
+              <div className="flex-1"><Label className="text-xs">Başlangıç</Label><Input type="date" data-testid="cmp-a-start" value={aStart} onChange={(e) => setAStart(e.target.value)} /></div>
+              <div className="flex-1"><Label className="text-xs">Bitiş</Label><Input type="date" data-testid="cmp-a-end" value={aEnd} onChange={(e) => setAEnd(e.target.value)} /></div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-teal-100 bg-teal-50/40 p-4">
+            <p className="font-semibold text-teal-700 mb-3">Dönem B</p>
+            <div className="flex gap-3">
+              <div className="flex-1"><Label className="text-xs">Başlangıç</Label><Input type="date" data-testid="cmp-b-start" value={bStart} onChange={(e) => setBStart(e.target.value)} /></div>
+              <div className="flex-1"><Label className="text-xs">Bitiş</Label><Input type="date" data-testid="cmp-b-end" value={bEnd} onChange={(e) => setBEnd(e.target.value)} /></div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4"><Button data-testid="cmp-run" className="bg-blue-500 hover:bg-blue-600" onClick={run}>Karşılaştır</Button></div>
+      </Card>
+
+      {res && (
+        <>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+              <p className="text-xs text-blue-600">Dönem A Ortalama</p>
+              <p className="text-2xl font-heading font-bold text-slate-800 mt-1" data-testid="cmp-a-avg">{res.a.avg || "—"}</p>
+              <p className="text-[11px] text-slate-400 mt-1">{res.a.count} yanıt</p>
+            </div>
+            <div className="rounded-2xl border border-teal-100 bg-teal-50/40 p-4">
+              <p className="text-xs text-teal-600">Dönem B Ortalama</p>
+              <p className="text-2xl font-heading font-bold text-slate-800 mt-1" data-testid="cmp-b-avg">{res.b.avg || "—"}</p>
+              <p className="text-[11px] text-slate-400 mt-1">{res.b.count} yanıt</p>
+            </div>
+            <div className={["rounded-2xl border p-4", res.diff >= 0 ? "border-emerald-100 bg-emerald-50/40" : "border-rose-100 bg-rose-50/40"].join(" ")}>
+              <p className="text-xs text-slate-500">Fark (B - A)</p>
+              <p className={["text-2xl font-heading font-bold mt-1", res.diff >= 0 ? "text-emerald-600" : "text-rose-600"].join(" ")} data-testid="cmp-diff">{res.diff > 0 ? "+" : ""}{res.diff}</p>
+              <p className="text-[11px] text-slate-400 mt-1">{res.diff >= 0 ? "Yükseliş" : "Düşüş"}</p>
+            </div>
+          </div>
+          <Card title="Genel Trend (referans)">
+            <TrendChart data={res.trend} />
+          </Card>
+        </>
+      )}
+    </div>
+  );
+};

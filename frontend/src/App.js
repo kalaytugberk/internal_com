@@ -10,6 +10,8 @@ import { HRPage } from "@/pages/HRPage";
 import { AnnouncementsFeed, AnnouncementDetail } from "@/pages/Announcements";
 import { PulseFeed } from "@/pages/pulse/PulseFeed";
 import { PulseFill } from "@/pages/pulse/PulseFill";
+import { EventsFeed, EventDetail } from "@/pages/events/Events";
+import { HomePage } from "@/pages/HomePage";
 import { AdminPanel } from "@/pages/admin/AdminPanel";
 
 const AdminRoute = ({ children }) => {
@@ -25,13 +27,15 @@ function App() {
           <Shell>
             <MandatoryPulseBanner />
             <Routes>
-              <Route path="/" element={<Placeholder title="Ana Sayfa" subtitle="Kişisel panonuz." icon="Home" accent="bg-blue-50 text-blue-500" />} />
+              <Route path="/" element={<HomePage />} />
               <Route path="/takim" element={<Placeholder title="Takım" subtitle="Takımınıza ait bilgiler." icon="Users" accent="bg-emerald-50 text-emerald-500" />} />
               <Route path="/ic-iletisim" element={<InternalComms />} />
               <Route path="/ic-iletisim/duyurular" element={<AnnouncementsFeed />} />
               <Route path="/ic-iletisim/duyurular/:id" element={<AnnouncementDetail />} />
               <Route path="/ic-iletisim/pulse" element={<PulseFeed />} />
               <Route path="/ic-iletisim/pulse/:id/fill" element={<PulseFill />} />
+              <Route path="/ic-iletisim/etkinlik" element={<EventsFeed />} />
+              <Route path="/ic-iletisim/etkinlik/:id" element={<EventDetail />} />
               <Route path="/ik" element={<AdminRoute><HRPage /></AdminRoute>} />
               <Route path="/takvim" element={<Placeholder title="Takvim" subtitle="Etkinlik ve izin takviminiz." icon="Calendar" accent="bg-amber-50 text-amber-500" />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
