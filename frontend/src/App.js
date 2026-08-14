@@ -5,6 +5,7 @@ import { AppProvider, useApp } from "@/context/AppContext";
 import { Shell } from "@/components/Shell";
 import { Placeholder } from "@/components/Placeholder";
 import { InternalComms } from "@/pages/InternalComms";
+import { HRPage } from "@/pages/HRPage";
 import { AnnouncementsFeed, AnnouncementDetail } from "@/pages/Announcements";
 import { AdminPanel } from "@/pages/admin/AdminPanel";
 
@@ -25,7 +26,7 @@ function App() {
               <Route path="/ic-iletisim" element={<InternalComms />} />
               <Route path="/ic-iletisim/duyurular" element={<AnnouncementsFeed />} />
               <Route path="/ic-iletisim/duyurular/:id" element={<AnnouncementDetail />} />
-              <Route path="/ik" element={<Placeholder title="İnsan Kaynakları" subtitle="İK işlemlerinizi yapabilirsiniz." icon="Building2" accent="bg-purple-50 text-purple-500" />} />
+              <Route path="/ik" element={<HRPage />} />
               <Route path="/takvim" element={<Placeholder title="Takvim" subtitle="Etkinlik ve izin takviminiz." icon="Calendar" accent="bg-amber-50 text-amber-500" />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
               <Route path="*" element={<Navigate to="/ic-iletisim" replace />} />
