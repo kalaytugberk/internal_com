@@ -100,10 +100,55 @@ class AnnouncementUpdate(BaseModel):
     status: Optional[str] = None
 
 
+class PulseQuestion(BaseModel):
+    id: str = Field(default_factory=new_id)
+    text: str
+    type: str = "skor"          # skor | tek_secim
+    options: List[str] = []     # for tek_secim
+    allow_comment: bool = False
+
+
+class PulseCreate(BaseModel):
+    title: str
+    icon: str = "Activity"
+    audience: Audience = Field(default_factory=Audience)
+    status: str = "active"      # active | passive
+    questions: List[PulseQuestion] = []
+    mandatory: bool = False
+    anonymous: bool = False
+    frequency: str = "haftalik" # haftalik | aylik
+    start_date: Optional[str] = None
+
+
+class PulseUpdate(BaseModel):
+    title: Optional[str] = None
+    icon: Optional[str] = None
+    audience: Optional[Audience] = None
+    status: Optional[str] = None
+    questions: Optional[List[PulseQuestion]] = None
+    mandatory: Optional[bool] = None
+    anonymous: Optional[bool] = None
+    frequency: Optional[str] = None
+    start_date: Optional[str] = None
+
+
+class PulseAnswer(BaseModel):
+    question_id: str
+    score: Optional[int] = None
+    choice: Optional[str] = None
+    comment: Optional[str] = None
+
+
+class PulseResponseCreate(BaseModel):
+    employee_id: str
+    answers: List[PulseAnswer] = []
+
+
 # ----------------------------- Static / Seed data -----------------------------
 
 CATEGORY_TYPES = [
     {"key": "duyuru", "label": "Duyuru", "active": True},
+    {"key": "pulse", "label": "Pulse Anketi", "active": True},
     {"key": "etkinlik", "label": "Etkinlik", "active": False},
     {"key": "anket", "label": "Anket", "active": False},
     {"key": "kudos", "label": "Kudos / Takdir", "active": False},
@@ -417,6 +462,217 @@ async def delete_announcement(ann_id: str):
     return {"ok": True}
 
 
+def _mean(vals):
+    return round(sum(vals) / len(vals), 2) if vals else 0
+
+
+async def seed_pulses_if_empty():
+    if await db.categories.count_documents({"category_type": "pulse"}) > 0:
+        return
+    import random
+    pcount = await db.categories.count_documents({})
+    pcat_id = new_id()
+    await db.categories.insert_one({
+        "id": pcat_id, "category_type": "pulse", "display_name": "Pulse Anketi",
+        "icon": "Activity", "icon_image": None, "status": "active",
+        "audience": Audience().model_dump(),
+        "reporting_levels": ["kisi", "organizasyon", "sirket"],
+        "content_type": "eylem", "pinnable": False,
+        "order": pcount, "created_at": now_iso(),
+    })
+    q1 = {"id": new_id(), "text": "Bu hafta kendini işte ne kadar enerjik hissettin?", "type": "skor", "options": [], "allow_comment": True}
+    q2 = {"id": new_id(), "text": "Yöneticinden aldığın destekten memnun musun?", "type": "skor", "options": [], "allow_comment": False}
+    q3 = {"id": new_id(), "text": "Bu hafta ağırlıklı çalışma modelin neydi?", "type": "tek_secim", "options": ["Ofiste", "Hibrit", "Uzaktan"], "allow_comment": False}
+    pulse_id = new_id()
+    await db.pulses.insert_one({
+        "id": pulse_id, "category_id": pcat_id, "title": "Haftalık Nabız Anketi",
+        "icon": "Activity", "audience": Audience().model_dump(), "status": "active",
+        "questions": [q1, q2, q3], "mandatory": True, "anonymous": False,
+        "frequency": "haftalik", "start_date": "2026-08-01", "created_at": now_iso(),
+    })
+    emps = await db.employees.find({}, {"_id": 0}).to_list(1000)
+    responders = emps[3:8]
+    comments = ["Genel olarak verimli bir haftaydı.", "Biraz yoğundu ama iyiydi.", "Destek konusunda gelişim olabilir."]
+    for d in ["2026-07-28", "2026-08-04"]:
+        for ci, emp in enumerate(responders):
+            await db.pulse_responses.insert_one({
+                "id": new_id(), "pulse_id": pulse_id, "employee_id": emp["id"],
+                "answers": [
+                    {"question_id": q1["id"], "score": random.randint(3, 5), "choice": None, "comment": comments[ci % len(comments)] if ci < 3 else None},
+                    {"question_id": q2["id"], "score": random.randint(2, 5), "choice": None, "comment": None},
+                    {"question_id": q3["id"], "score": None, "choice": random.choice(["Ofiste", "Hibrit", "Uzaktan"]), "comment": None},
+                ],
+                "created_at": d + "T09:00:00+00:00",
+            })
+
+
+@api_router.get("/pulses")
+async def list_pulses():
+    items = await db.pulses.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    emps = await db.employees.find({}, {"_id": 0}).to_list(1000)
+    for p in items:
+        resp = await db.pulse_responses.find({"pulse_id": p["id"]}, {"_id": 0}).to_list(100000)
+        responders = set(r["employee_id"] for r in resp)
+        target = [e for e in emps if employee_matches(e, p.get("audience"))]
+        p["target_count"] = len(target)
+        p["response_count"] = len(responders)
+        p["response_rate"] = round(100 * len(responders) / len(target)) if target else 0
+    return items
+
+
+@api_router.post("/pulses")
+async def create_pulse(payload: PulseCreate):
+    if not (1 <= len(payload.questions) <= 5):
+        raise HTTPException(400, "Bir pulse 1 ile 5 arası soru içermelidir.")
+    cat = await db.categories.find_one({"category_type": "pulse"}, {"_id": 0})
+    doc = {"id": new_id(), "category_id": cat["id"] if cat else None, **payload.model_dump(), "created_at": now_iso()}
+    await db.pulses.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.get("/pulses/feed")
+async def pulses_feed(employee_id: str):
+    emp = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not emp:
+        raise HTTPException(404, "Çalışan bulunamadı")
+    active = await db.pulses.find({"status": "active"}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    result = []
+    for p in active:
+        if employee_matches(emp, p.get("audience")):
+            filled = await db.pulse_responses.count_documents({"pulse_id": p["id"], "employee_id": employee_id}) > 0
+            p["filled"] = filled
+            result.append(p)
+    return result
+
+
+@api_router.get("/pulses/{pid}")
+async def get_pulse(pid: str):
+    doc = await db.pulses.find_one({"id": pid}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Pulse bulunamadı")
+    return doc
+
+
+@api_router.put("/pulses/{pid}")
+async def update_pulse(pid: str, payload: PulseUpdate):
+    update = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
+    if "questions" in update and not (1 <= len(update["questions"]) <= 5):
+        raise HTTPException(400, "Bir pulse 1 ile 5 arası soru içermelidir.")
+    res = await db.pulses.update_one({"id": pid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Pulse bulunamadı")
+    return await db.pulses.find_one({"id": pid}, {"_id": 0})
+
+
+@api_router.delete("/pulses/{pid}")
+async def delete_pulse(pid: str):
+    await db.pulses.delete_one({"id": pid})
+    await db.pulse_responses.delete_many({"pulse_id": pid})
+    return {"ok": True}
+
+
+@api_router.post("/pulses/{pid}/respond")
+async def respond_pulse(pid: str, payload: PulseResponseCreate):
+    pulse = await db.pulses.find_one({"id": pid}, {"_id": 0})
+    if not pulse:
+        raise HTTPException(404, "Pulse bulunamadı")
+    doc = {
+        "id": new_id(), "pulse_id": pid, "employee_id": payload.employee_id,
+        "answers": [a.model_dump() for a in payload.answers], "created_at": now_iso(),
+    }
+    await db.pulse_responses.insert_one(doc)
+    return {"ok": True}
+
+
+@api_router.get("/pulses/{pid}/report")
+async def pulse_report(pid: str):
+    pulse = await db.pulses.find_one({"id": pid}, {"_id": 0})
+    if not pulse:
+        raise HTTPException(404, "Pulse bulunamadı")
+    anonymous = pulse.get("anonymous", False)
+    responses = await db.pulse_responses.find({"pulse_id": pid}, {"_id": 0}).sort("created_at", 1).to_list(100000)
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    target = [e for e in emps.values() if employee_matches(e, pulse.get("audience"))]
+    responders = set(r["employee_id"] for r in responses)
+
+    questions_out = []
+    all_skor_by_date = {}
+    dept_scores = {}
+    for q in pulse["questions"]:
+        qid = q["id"]
+        if q["type"] == "skor":
+            by_date = {}
+            comments = []
+            all_scores = []
+            for r in responses:
+                for a in r["answers"]:
+                    if a["question_id"] != qid:
+                        continue
+                    if a.get("score") is not None:
+                        day = r["created_at"][:10]
+                        by_date.setdefault(day, []).append(a["score"])
+                        all_scores.append(a["score"])
+                        all_skor_by_date.setdefault(day, []).append(a["score"])
+                        emp = emps.get(r["employee_id"])
+                        if emp:
+                            dept_scores.setdefault(emp["department"], []).append(a["score"])
+                    if a.get("comment"):
+                        comments.append({"name": "Anonim" if anonymous else emps.get(r["employee_id"], {}).get("name", "—"), "text": a["comment"]})
+            trend = [{"date": d, "avg": _mean(by_date[d]), "count": len(by_date[d])} for d in sorted(by_date)]
+            questions_out.append({"id": qid, "text": q["text"], "type": "skor", "trend": trend, "overall_avg": _mean(all_scores), "comments": comments})
+        else:
+            counts = {opt: 0 for opt in q.get("options", [])}
+            comments = []
+            total = 0
+            for r in responses:
+                for a in r["answers"]:
+                    if a["question_id"] == qid and a.get("choice") is not None:
+                        counts[a["choice"]] = counts.get(a["choice"], 0) + 1
+                        total += 1
+                        if a.get("comment"):
+                            comments.append({"name": "Anonim" if anonymous else emps.get(r["employee_id"], {}).get("name", "—"), "text": a["comment"]})
+            distribution = [{"option": o, "count": c, "percent": round(100 * c / total) if total else 0} for o, c in counts.items()]
+            questions_out.append({"id": qid, "text": q["text"], "type": "tek_secim", "distribution": distribution, "comments": comments})
+
+    company_trend = [{"date": d, "avg": _mean(all_skor_by_date[d])} for d in sorted(all_skor_by_date)]
+    company_avg = _mean([s for v in all_skor_by_date.values() for s in v])
+    org_units = [{"department": d, "avg": _mean(v), "count": len(v)} for d, v in dept_scores.items()]
+
+    persons = []
+    if not anonymous:
+        for r in responses:
+            emp = emps.get(r["employee_id"])
+            persons.append({
+                "employee_id": r["employee_id"],
+                "name": emp["name"] if emp else "—",
+                "department": emp["department"] if emp else "—",
+                "date": r["created_at"][:10],
+                "answers": r["answers"],
+            })
+
+    return {
+        "pulse": pulse, "anonymous": anonymous,
+        "target_count": len(target), "response_count": len(responders),
+        "response_rate": round(100 * len(responders) / len(target)) if target else 0,
+        "questions": questions_out,
+        "company": {"avg": company_avg, "trend": company_trend},
+        "org_units": org_units, "persons": persons,
+    }
+
+
+@api_router.get("/pulses/{pid}/my-history")
+async def pulse_my_history(pid: str, employee_id: str):
+    pulse = await db.pulses.find_one({"id": pid}, {"_id": 0})
+    if not pulse:
+        raise HTTPException(404, "Pulse bulunamadı")
+    responses = await db.pulse_responses.find({"pulse_id": pid, "employee_id": employee_id}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+    history = []
+    for r in responses:
+        scores = [a["score"] for a in r["answers"] if a.get("score") is not None]
+        history.append({"date": r["created_at"][:10], "avg": _mean(scores)})
+    return {"pulse_title": pulse["title"], "history": history}
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -434,6 +690,7 @@ logger = logging.getLogger(__name__)
 @app.on_event("startup")
 async def on_startup():
     await seed_if_empty()
+    await seed_pulses_if_empty()
 
 
 @app.on_event("shutdown")

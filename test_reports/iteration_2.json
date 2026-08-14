@@ -1,0 +1,34 @@
+{
+  "summary": "Phase-2 testing of new Pulse Anketi category. Backend: 23/23 pytest pass (12 pre-existing + 11 new pulse tests covering seed, list with response_rate, 1-5 question validation on POST & PUT, feed audience filtering + filled flag, respond persistence, anonymous report gating (persons[] empty + comments as 'Anonim'), non-anonymous report structure (company trend, org_units, persons, distribution), my-history employee-scoped). Frontend: verified employee flow end-to-end — discovery grid renders 2 active cards (Duyurular + Pulse Anketi) with Doldurulmadı/Dolduruldu preview badges, mandatory banner + CTA navigate to fill, fill screen shows 5 emoji faces (skor) + radios (tek_secim) + optional comment textareas, validation toast on empty submit, thank-you screen after valid submit, feed badge flips to Dolduruldu, history dialog shows personal line chart. Admin flow: third tab 'Pulse Anketleri' renders (after fixing missing import — see updated_files), list shows response rate 62% (5/8) for seeded pulse, report has Şirket line chart, Organizasyon Birimi bar chart, Kişi Bazlı table with 10 person rows; MAX_Q=5 add-button disables at 5 with warning; creating an anonymous pulse hides the Kişi tab entirely (verified). Announcements from prior phase still working (smoke via pytest).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MandatoryPulseBanner", "issue": "Banner does not refresh after the employee submits a mandatory pulse. It stays visible with 'Şimdi Doldur' CTA even though the feed badge already flipped to Dolduruldu. Root cause: useEffect deps are only [role, currentEmployeeId]; there is no event/refresh trigger after api.respondPulse. Needs a bus/refresh key (e.g., listen for pulseSubmitted event, or include location.pathname / a global refresh counter in deps) so the banner re-queries /api/pulses/feed after fill.", "selector": "[data-testid=mandatory-pulse-banner]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/backend/tests/test_pulses.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Refresh MandatoryPulseBanner after a successful pulse submission (e.g., emit a window event 'pulse:submitted' in PulseFill.submit() and listen for it in the banner, or wire a shared refresh counter via AppContext).",
+    "(Optional) Persist role/currentEmployeeId in localStorage — page.goto/reload currently resets role to 'employee' which surprised testing and could confuse real users returning via bookmarks."
+  ],
+  "critical_code_review_comments": [
+    "AdminPanel.js originally referenced <PulsesManager /> but did NOT import it, and TABS array had no 'pulse' entry — the third admin tab was unreachable. Fixed by test agent (added import + TABS entry). Main agent should keep this fix.",
+    "MandatoryPulseBanner state stale after submit (see UI bug).",
+    "AppContext role/currentEmployeeId are in-memory only; a full page reload resets to default employee. Consider persisting to localStorage.",
+    "PulsesManager save() uses object destructuring to strip fields but does not strip 'response_count', 'response_rate', 'target_count' when editing — PUT payload will include those. Backend ignores unknown fields via Pydantic exclude_none but PulseUpdate is strict Optional — extra keys are silently accepted since Pydantic v2 default is 'ignore'. Non-blocking but worth cleaning."
+  ],
+  "updated_files": [
+    "/app/frontend/src/pages/admin/AdminPanel.js (added PulsesManager import + pulse tab TABS entry — required to render admin-tab-pulse)",
+    "/app/backend/tests/backend_test.py (updated to load .env, updated category-types assertion to account for pulse=active)",
+    "/app/backend/tests/test_pulses.py (new — 11 pulse tests)"
+  ],
+  "success_rate": {"backend": "100% (23/23)", "frontend": "95% (1 UI bug: mandatory banner not refreshing after fill)"},
+  "test_credentials": "N/A — mock role switcher (data-testid=role-switcher, role-option-admin / role-option-employee).",
+  "seed_data_creation": "Backend startup seed: 8 employees, 1 'Duyurular' category + 3 subs + 4 announcements, plus 1 'Pulse Anketi' category with seeded 'Haftalık Nabız Anketi' (3 questions, 2 skor + 1 tek_secim) and 10 pre-existing responses across 5 employees for 2 past dates. Test-agent transient records (TEST_/E2E_ pulses + E2E_Anon_Pulse) cleaned up post-run.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend pulse APIs are fully verified (23/23 tests). If MandatoryPulseBanner refresh is fixed by main agent, retest by: switching to Çalışan (default = Erol Taş), clicking mandatory-pulse-cta, filling all 3 questions, submitting -> after pulse-thanks, navigating back to /ic-iletisim/pulse and asserting [data-testid=mandatory-pulse-banner] is null. AdminPanel.js pulse tab was wired by test agent and works — do NOT revert.",
+  "rca of the issue": "MandatoryPulseBanner useEffect deps are [role, currentEmployeeId]. After a mandatory pulse is submitted via POST /api/pulses/{id}/respond, no re-render trigger exists to re-run the effect and refetch /api/pulses/feed, so `pending` state remains the pre-fill value. Fix options: (1) window event dispatch from PulseFill.submit() + listener in banner, (2) shared context refresh counter incremented on any pulse action, (3) React Query with query invalidation."
+}

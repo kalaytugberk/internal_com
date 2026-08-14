@@ -3,7 +3,9 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://plena-connect.preview.emergentagent.com').rstrip('/')
+from dotenv import load_dotenv
+load_dotenv('/app/frontend/.env')
+BASE_URL = os.environ['REACT_APP_BACKEND_URL'].rstrip('/')
 API = f"{BASE_URL}/api"
 
 
@@ -40,7 +42,9 @@ class TestSeed:
         data = r.json()
         duyuru = next(x for x in data if x["key"] == "duyuru")
         assert duyuru["active"] is True
-        others = [x for x in data if x["key"] != "duyuru"]
+        pulse = next(x for x in data if x["key"] == "pulse")
+        assert pulse["active"] is True
+        others = [x for x in data if x["key"] not in ("duyuru", "pulse")]
         assert all(o["active"] is False for o in others)
 
 

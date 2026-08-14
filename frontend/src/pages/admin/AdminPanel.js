@@ -2,11 +2,13 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CategoriesManager } from "@/pages/admin/CategoriesManager";
 import { AnnouncementsManager } from "@/pages/admin/AnnouncementsManager";
-import { Layers, Megaphone, ChevronLeft } from "lucide-react";
+import { PulsesManager } from "@/pages/pulse/PulsesManager";
+import { Layers, Megaphone, ChevronLeft, Activity } from "lucide-react";
 
 const TABS = [
   { key: "categories", label: "Kategori Yönetimi", icon: Layers },
   { key: "announcements", label: "Duyuru Yönetimi", icon: Megaphone },
+  { key: "pulse", label: "Pulse Anketleri", icon: Activity },
 ];
 
 export const AdminPanel = () => {
@@ -36,7 +38,9 @@ export const AdminPanel = () => {
         })}
       </div>
 
-      {tab === "categories" ? <CategoriesManager /> : <AnnouncementsManager />}
+      {tab === "categories" && <CategoriesManager />}
+      {tab === "announcements" && <AnnouncementsManager />}
+      {tab === "pulse" && <PulsesManager />}
     </div>
   );
 };

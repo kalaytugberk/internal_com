@@ -9,6 +9,8 @@ export const AppProvider = ({ children }) => {
   const [role, setRole] = useState("employee"); // "admin" | "employee"
   const [employees, setEmployees] = useState([]);
   const [currentEmployeeId, setCurrentEmployeeId] = useState(null);
+  const [pulseRefresh, setPulseRefresh] = useState(0);
+  const bumpPulse = () => setPulseRefresh((n) => n + 1);
 
   useEffect(() => {
     api.employees().then((list) => {
@@ -22,7 +24,7 @@ export const AppProvider = ({ children }) => {
 
   return (
     <AppContext.Provider
-      value={{ role, setRole, employees, currentEmployeeId, setCurrentEmployeeId, currentEmployee }}
+      value={{ role, setRole, employees, currentEmployeeId, setCurrentEmployeeId, currentEmployee, pulseRefresh, bumpPulse }}
     >
       {children}
     </AppContext.Provider>

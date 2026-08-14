@@ -31,4 +31,14 @@ export const api = {
   rejectAnnouncement: (id) => http.post(`/announcements/${id}/reject`).then((r) => r.data),
   pinAnnouncement: (id) => http.post(`/announcements/${id}/pin`).then((r) => r.data),
   deleteAnnouncement: (id) => http.delete(`/announcements/${id}`).then((r) => r.data),
+
+  pulses: () => http.get("/pulses").then((r) => r.data),
+  pulseFeed: (employeeId) => http.get("/pulses/feed", { params: { employee_id: employeeId } }).then((r) => r.data),
+  pulse: (id) => http.get(`/pulses/${id}`).then((r) => r.data),
+  createPulse: (d) => http.post("/pulses", d).then((r) => r.data),
+  updatePulse: (id, d) => http.put(`/pulses/${id}`, d).then((r) => r.data),
+  deletePulse: (id) => http.delete(`/pulses/${id}`).then((r) => r.data),
+  respondPulse: (id, d) => http.post(`/pulses/${id}/respond`, d).then((r) => r.data),
+  pulseReport: (id) => http.get(`/pulses/${id}/report`).then((r) => r.data),
+  pulseMyHistory: (id, employeeId) => http.get(`/pulses/${id}/my-history`, { params: { employee_id: employeeId } }).then((r) => r.data),
 };

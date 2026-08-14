@@ -31,12 +31,14 @@ Plena (İK/HR SaaS) için "İç İletişim" modülü. 20+ içerik kategorisini t
 - ✅ Tüm 5 çekirdek gereksinim uçtan uca çalışır (testing agent: backend 100%, frontend 100%)
 - ✅ 8 mock çalışan, 1 kategori (Duyurular), 3 alt kategori, 4 örnek duyuru seed
 - ✅ Onay akışı, pinleme, hedef kitle filtreli çalışan akışı doğrulandı
+- ✅ İK sayfası (kart grid) eklendi; "İç İletişim Platformu" kartı modüle giriş yapar; İK sekmesi yalnızca admin'e görünür
+- ✅ **Pulse Anketi kategorisi** eklendi (2026-08-14): Kategori motoru + Segmentasyon bileşeni yeniden kullanıldı. Admin: soru havuzu (1-5 sert limit), skor/emoji & tek seçim tipleri, opsiyonel yorum, zorunlu/anonim/sıklık/başlangıç ayarları, hedef kitle. Raporlama: Şirket (trend), Organizasyon Birimi (departman bar), Kişi Bazlı (anonimse gizli), soru bazlı trend/dağılım + yorumlar, yanıt oranı. Çalışan: pulse akışı (Doldurulmadı/Dolduruldu rozeti), zorunlu pulse banner'ı (görsel), adım adım doldurma (emoji yüzler + radio + yorum), teşekkür ekranı, kişisel skor trendi. Testing agent: backend 23/23, frontend %100 (banner refresh bug'ı düzeltildi).
 
 ## Backlog / Remaining
-- P1: Diğer 19 kategori tipini aktifleştirme (Etkinlik, Anket, Kudos, Oyunlaştırma, İlan...)
-- P1: Raporlama ekranları (kişi/organizasyon/şirket kırılımı)
-- P2: Gerçek bildirim gönderimi (Mail/Push/SMS), gerçek SSO/İK entegrasyonu, bulut dosya depolama
-- P2: Yorum/RSVP/oy gibi kategoriye özel etkileşimler
+- P1: Diğer kategori tipleri (Etkinlik, Kudos, Oyunlaştırma, İlan...)
+- P1: Duyuru için raporlama ekranları
+- P2: Gerçek bildirim gönderimi (Mail/Push/SMS), gerçek zamanlayıcı/cron (pulse sıklığı), gerçek SSO/İK entegrasyonu, bulut dosya depolama
+- P2: Zorunlu pulse için gerçek engelleme mimarisi
 
 ## Notes / Mocked
 - Bildirim kanalları yalnızca veri modelinde tutulur (GERÇEK GÖNDERİM YOK — MOCKED)
