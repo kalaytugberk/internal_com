@@ -26,7 +26,7 @@ function App() {
               <Route path="/ic-iletisim" element={<InternalComms />} />
               <Route path="/ic-iletisim/duyurular" element={<AnnouncementsFeed />} />
               <Route path="/ic-iletisim/duyurular/:id" element={<AnnouncementDetail />} />
-              <Route path="/ik" element={<HRPage />} />
+              <Route path="/ik" element={<AdminRoute><HRPage /></AdminRoute>} />
               <Route path="/takvim" element={<Placeholder title="Takvim" subtitle="Etkinlik ve izin takviminiz." icon="Calendar" accent="bg-amber-50 text-amber-500" />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
               <Route path="*" element={<Navigate to="/ic-iletisim" replace />} />

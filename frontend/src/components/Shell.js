@@ -49,7 +49,7 @@ export const Shell = ({ children }) => {
 
           {/* Center tabs */}
           <nav className="flex-1 flex items-center justify-center gap-1 sm:gap-3 overflow-x-auto pln-scroll">
-            {TABS.map((t) => {
+            {TABS.filter((t) => !(t.to === "/ik" && role !== "admin")).map((t) => {
               const active = t.to === "/ic-iletisim" ? isCommsActive : undefined;
               return (
                 <NavLink
