@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@/api";
 import { MoodReport } from "@/pages/mood/MoodReport";
-import { SegmentPicker } from "@/components/SegmentPicker";
+import { AudiencePicker } from "@/components/AudiencePicker";
 import { IconPicker } from "@/components/IconPicker";
 import { emptyAudience } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -80,7 +80,7 @@ export const MoodSettings = () => {
 
         <div>
           <Label className="mb-2 block">Hedef Kitle</Label>
-          <SegmentPicker value={cfg.audience || emptyAudience()} onChange={(a) => setCfg({ ...cfg, audience: a })} testPrefix="mood-seg" />
+          <AudiencePicker value={cfg.audience || emptyAudience()} onChange={(a) => setCfg({ ...cfg, audience: a })} testPrefix="mood-seg" />
         </div>
 
         <div className="flex justify-end">

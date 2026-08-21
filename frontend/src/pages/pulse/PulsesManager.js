@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "@/api";
 import { PulseReport } from "@/pages/pulse/PulseReport";
-import { SegmentPicker } from "@/components/SegmentPicker";
+import { AudiencePicker } from "@/components/AudiencePicker";
 import { IconPicker } from "@/components/IconPicker";
 import { emptyAudience, audienceSummary } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -161,7 +161,7 @@ const PulseDialog = ({ open, onOpenChange, initial, onSave }) => {
 
           <div>
             <Label className="mb-2 block">Hedef Kitle</Label>
-            <SegmentPicker value={form.audience} onChange={(a) => setForm({ ...form, audience: a })} testPrefix="pulse-seg" />
+            <AudiencePicker value={form.audience} onChange={(a) => setForm({ ...form, audience: a })} testPrefix="pulse-seg" />
           </div>
         </div>
 

@@ -268,7 +268,23 @@ def clean(doc):
 
 
 def employee_matches(emp: dict, audience: dict) -> bool:
-    if not audience or audience.get("all"):
+    if not audience:
+        return True
+    # Yeni şema: isimli hedef kitle (dahil/hariç kriterler)
+    if "includes" in audience or "excludes" in audience:
+        includes = audience.get("includes") or []
+        excludes = audience.get("excludes") or []
+
+        def _cm(c):
+            vals = c.get("values") or []
+            return bool(vals) and emp.get(c.get("field")) in vals
+
+        if includes and not all(_cm(c) for c in includes):
+            return False
+        if any(_cm(c) for c in excludes):
+            return False
+        return True
+    if audience.get("all"):
         return True
     checks = [
         ("departments", "department"),
@@ -1568,6 +1584,90 @@ async def unregister_route(rid: str, payload: RouteRegister):
     return {"ok": True, "reg_count": len(regs), "my_registration": None}
 
 
+# ----------------------------- Hedef Kitle (Audiences) -----------------------------
+
+class Criterion(BaseModel):
+    field: str = "department"          # department | location | title | seniority
+    values: List[str] = []
+
+
+class AudienceDefCreate(BaseModel):
+    name: str
+    description: str = ""
+    module: str = "İç İletişim"
+    includes: List[Criterion] = []
+    excludes: List[Criterion] = []
+
+
+class AudienceDefUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    module: Optional[str] = None
+    includes: Optional[List[Criterion]] = None
+    excludes: Optional[List[Criterion]] = None
+
+
+class AudiencePreview(BaseModel):
+    includes: List[Criterion] = []
+    excludes: List[Criterion] = []
+
+
+async def seed_audiences_if_empty():
+    if await db.audiences.count_documents({}) > 0:
+        return
+    samples = [
+        {"name": "Tüm Mühendislik", "description": "Mühendislik departmanı", "module": "İç İletişim",
+         "includes": [{"field": "department", "values": ["Mühendislik"]}], "excludes": []},
+        {"name": "İstanbul Ofisi", "description": "İstanbul lokasyonundaki çalışanlar", "module": "İç İletişim",
+         "includes": [{"field": "location", "values": ["İstanbul"]}], "excludes": []},
+        {"name": "Yöneticiler (Direktör hariç)", "description": "Yönetici/Direktör, direktörler hariç", "module": "İç İletişim",
+         "includes": [{"field": "title", "values": ["Yönetici", "Direktör"]}],
+         "excludes": [{"field": "title", "values": ["Direktör"]}]},
+    ]
+    for s in samples:
+        await db.audiences.insert_one({"id": new_id(), **s, "created_at": now_iso()})
+
+
+@api_router.get("/audiences")
+async def list_audiences():
+    return await db.audiences.find({}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+
+
+@api_router.post("/audiences")
+async def create_audience(payload: AudienceDefCreate):
+    doc = {"id": new_id(), **payload.model_dump(), "created_at": now_iso()}
+    await db.audiences.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.post("/audiences/preview")
+async def preview_audience(payload: AudiencePreview):
+    emps = await db.employees.find({}, {"_id": 0}).to_list(1000)
+    aud = {"includes": [c.model_dump() for c in payload.includes],
+           "excludes": [c.model_dump() for c in payload.excludes]}
+    matched = [e for e in emps if employee_matches(e, aud)]
+    return {
+        "count": len(matched), "total": len(emps),
+        "employees": [{"id": e["id"], "name": e["name"], "department": e.get("department"),
+                       "location": e.get("location"), "title": e.get("title")} for e in matched],
+    }
+
+
+@api_router.put("/audiences/{aid}")
+async def update_audience(aid: str, payload: AudienceDefUpdate):
+    update = {k: v for k, v in payload.model_dump(exclude_none=True).items()}
+    res = await db.audiences.update_one({"id": aid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Hedef kitle bulunamadı")
+    return await db.audiences.find_one({"id": aid}, {"_id": 0})
+
+
+@api_router.delete("/audiences/{aid}")
+async def delete_audience(aid: str):
+    await db.audiences.delete_one({"id": aid})
+    return {"ok": True}
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -1591,6 +1691,7 @@ async def on_startup():
     await seed_listings_if_empty()
     await seed_avatars_if_empty()
     await seed_routes_if_empty()
+    await seed_audiences_if_empty()
 
 
 @app.on_event("shutdown")

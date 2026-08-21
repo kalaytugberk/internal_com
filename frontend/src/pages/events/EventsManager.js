@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "@/api";
-import { SegmentPicker } from "@/components/SegmentPicker";
+import { AudiencePicker } from "@/components/AudiencePicker";
 import { emptyAudience, audienceSummary } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -148,7 +148,7 @@ export const EventsManager = () => {
                   <Switch data-testid="event-allowmaybe" checked={form.allow_maybe} onCheckedChange={(c) => setForm({ ...form, allow_maybe: c })} />
                 </div>
               </div>
-              <div><Label className="mb-2 block">Hedef Kitle</Label><SegmentPicker value={form.audience} onChange={(a) => setForm({ ...form, audience: a })} testPrefix="event-seg" /></div>
+              <div><Label className="mb-2 block">Hedef Kitle</Label><AudiencePicker value={form.audience} onChange={(a) => setForm({ ...form, audience: a })} testPrefix="event-seg" /></div>
             </div>
           )}
           <DialogFooter>

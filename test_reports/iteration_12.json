@@ -1,0 +1,25 @@
+{
+  "summary": "Tested new named/criteria-based Hedef Kitle (Audiences) feature end-to-end (backend + frontend) and admin category card icons. All 7 backend tests passed (seed list of 3, CRUD, preview semantics 4/8 for İstanbul-Direktör, feed regression for announcements/events). Frontend: Kategori Yönetimi cards (7 active) and Yakında cards (8) all render icons. AudiencePicker inside cat-edit dialog exposes select+new; selecting seeded audience updates 'Hedef: <name>'. Builder opens with all data-testids present, criteria editor works, preview toast shows '4/8 çalışan eşleşiyor', save persists and picker reflects the new audience name. Cleanup DELETE succeeded (200).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": { "ui_bugs": [], "integration_issues": [], "design_issues": [] },
+  "test_report_links": [
+    "/app/backend/tests/test_audiences.py",
+    "/app/test_reports/pytest/audiences.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AudiencePicker.js: onSelect ignores '__custom__' — fine, but selectedKey defaults to '__custom__' when a stored audience lacks an id (legacy shape), which could show 'Özel Seçim (...)'. Consider hiding when value is empty object.",
+    "server.py employee_matches: when includes list is empty and excludes exist, treats as match-all-minus-excludes; documented behavior — confirm intended.",
+    "AudienceBuilder Select for 'Mevcut Tanımdan Kopyala' is uncontrolled and doesn't reset between opens; low priority."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_audiences.py (new)"
+  ],
+  "success_rate": { "backend": "100% (7/7)", "frontend": "100% (all flows verified)" },
+  "test_credentials": "No auth — localStorage.setItem('pln_role','admin') then /admin",
+  "seed_data_creation": "Created TEST_QA_Audience (deleted) via API, TEST_QA_UI_Audience (deleted) via UI+API cleanup",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "AudiencePicker + AudienceBuilder verified against category (cat-seg-*) prefix. Other prefixes (event-seg, pulse-seg, ann-seg, sub-seg, concept-seg, listing-seg, mood-seg) use the same shared component — considered covered by cat-seg verification unless a specific issue arises. Backend tests live in /app/backend/tests/test_audiences.py.",
+  "rca of the issue": "N/A — no issues found."
+}

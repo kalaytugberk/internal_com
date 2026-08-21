@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@/api";
-import { SegmentPicker } from "@/components/SegmentPicker";
+import { AudiencePicker } from "@/components/AudiencePicker";
 import { emptyAudience, audienceSummary } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +41,7 @@ const ConceptDialog = ({ open, onOpenChange, initial, onSave }) => {
             <Checkbox checked={form.inherit} onCheckedChange={(c) => setForm({ ...form, inherit: c })} data-testid="concept-inherit" />
             Hedef kitleyi üst kategoriden miras al
           </label>
-          {!form.inherit && <SegmentPicker value={form.audience} onChange={(a) => setForm({ ...form, audience: a })} testPrefix="concept-seg" />}
+          {!form.inherit && <AudiencePicker value={form.audience} onChange={(a) => setForm({ ...form, audience: a })} testPrefix="concept-seg" />}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "@/api";
-import { SegmentPicker } from "@/components/SegmentPicker";
+import { AudiencePicker } from "@/components/AudiencePicker";
 import { IconPicker } from "@/components/IconPicker";
 import { emptyAudience } from "@/lib/constants";
 import { LISTING_STATUS, typeMeta, remainingDays } from "@/lib/listings";
@@ -91,7 +91,7 @@ export const ListingsManager = () => {
             <Label className="mb-1.5 block">Varsayılan yayın süresi (gün)</Label>
             <Input type="number" min={1} data-testid="listing-duration" className="w-40" value={cfg.default_duration_days} onChange={(e) => setCfg({ ...cfg, default_duration_days: e.target.value })} />
           </div>
-          <div><Label className="mb-2 block">Hedef Kitle</Label><SegmentPicker value={cfg.audience || emptyAudience()} onChange={(a) => setCfg({ ...cfg, audience: a })} testPrefix="listing-seg" /></div>
+          <div><Label className="mb-2 block">Hedef Kitle</Label><AudiencePicker value={cfg.audience || emptyAudience()} onChange={(a) => setCfg({ ...cfg, audience: a })} testPrefix="listing-seg" /></div>
           <div className="flex justify-end"><Button data-testid="listing-save-btn" className="bg-blue-500 hover:bg-blue-600" onClick={saveCfg}>Kaydet</Button></div>
         </div>
       )}

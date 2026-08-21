@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "@/api";
 import { Icon } from "@/lib/icons";
-import { SegmentPicker } from "@/components/SegmentPicker";
+import { AudiencePicker } from "@/components/AudiencePicker";
 import { STATUS_META, CHANNELS, emptyAudience, audienceSummary } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -193,7 +193,7 @@ export const AnnouncementsManager = () => {
               </div>
               <div>
                 <Label className="mb-2 block">Hedef Kitle</Label>
-                <SegmentPicker value={form.audience} onChange={(a) => setForm({ ...form, audience: a })} testPrefix="ann-seg" />
+                <AudiencePicker value={form.audience} onChange={(a) => setForm({ ...form, audience: a })} testPrefix="ann-seg" />
               </div>
             </div>
           )}

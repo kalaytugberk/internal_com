@@ -92,4 +92,10 @@ export const api = {
   registerRoute: (id, d) => http.post(`/routes/${id}/register`, d).then((r) => r.data),
   unregisterRoute: (id, d) => http.post(`/routes/${id}/unregister`, d).then((r) => r.data),
   routesReport: () => http.get("/routes/report").then((r) => r.data),
+
+  audiences: () => http.get("/audiences").then((r) => r.data),
+  createAudience: (d) => http.post("/audiences", d).then((r) => r.data),
+  updateAudience: (id, d) => http.put(`/audiences/${id}`, d).then((r) => r.data),
+  deleteAudience: (id) => http.delete(`/audiences/${id}`).then((r) => r.data),
+  previewAudience: (d) => http.post("/audiences/preview", d).then((r) => r.data),
 };

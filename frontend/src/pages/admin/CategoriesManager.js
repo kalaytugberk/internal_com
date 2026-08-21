@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { api } from "@/api";
 import { Icon } from "@/lib/icons";
 import { IconPicker } from "@/components/IconPicker";
-import { SegmentPicker } from "@/components/SegmentPicker";
+import { AudiencePicker } from "@/components/AudiencePicker";
 import { REPORTING_LEVELS, emptyAudience, audienceSummary } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,14 +64,14 @@ const CATALOG = {
 
 // Henüz yapılmamış kategoriler (yakında)
 const FUTURE_CATALOG = [
-  { key: "isg", label: "İSG", desc: "Acil durum ve ramak kala bildirimleri." },
-  { key: "anlik_bildirim", label: "Anlık bildirim", desc: "Hızlı geri bildirim toplama bildirimleri." },
-  { key: "hap_bilgi", label: "Hap bilgi", desc: "Konu bazlı kısa bilgilendirmeler." },
-  { key: "kudos", label: "Kudos", desc: "Takdir ve teşekkür kuralları." },
-  { key: "rozet", label: "Rozet / oyunlaştırma", desc: "Puan kaynakları ve rozet kriterleri." },
-  { key: "indirim", label: "İndirim & ayrıcalıklar", desc: "Çalışan indirimlerini buradan girin." },
-  { key: "toplanti_odasi", label: "Toplantı odası", desc: "Oda tanımları ve rezervasyon kuralları." },
-  { key: "sirket_enleri", label: "Şirketin enleri", desc: "Ayın çalışanı ve ödül başlıkları." },
+  { key: "isg", label: "İSG", desc: "Acil durum ve ramak kala bildirimleri.", icon: "ShieldAlert" },
+  { key: "anlik_bildirim", label: "Anlık bildirim", desc: "Hızlı geri bildirim toplama bildirimleri.", icon: "Bell" },
+  { key: "hap_bilgi", label: "Hap bilgi", desc: "Konu bazlı kısa bilgilendirmeler.", icon: "Lightbulb" },
+  { key: "kudos", label: "Kudos", desc: "Takdir ve teşekkür kuralları.", icon: "Award" },
+  { key: "rozet", label: "Rozet / oyunlaştırma", desc: "Puan kaynakları ve rozet kriterleri.", icon: "Trophy" },
+  { key: "indirim", label: "İndirim & ayrıcalıklar", desc: "Çalışan indirimlerini buradan girin.", icon: "Percent" },
+  { key: "toplanti_odasi", label: "Toplantı odası", desc: "Oda tanımları ve rezervasyon kuralları.", icon: "DoorOpen" },
+  { key: "sirket_enleri", label: "Şirketin enleri", desc: "Ayın çalışanı ve ödül başlıkları.", icon: "Star" },
 ];
 
 const blankCategory = () => ({
@@ -174,7 +174,7 @@ const CategoryDialog = ({ open, onOpenChange, initial, onSave, existingTypes = [
 
           <div>
             <Label className="mb-2 block">Hedef Kitle</Label>
-            <SegmentPicker value={form.audience} onChange={(a) => setForm({ ...form, audience: a })} testPrefix="cat-seg" />
+            <AudiencePicker value={form.audience} onChange={(a) => setForm({ ...form, audience: a })} testPrefix="cat-seg" />
           </div>
         </div>
         <DialogFooter>
@@ -238,7 +238,7 @@ const SubcategoryPanel = ({ category }) => {
                 <Checkbox checked={form.inherit} onCheckedChange={(c) => setForm({ ...form, inherit: c })} data-testid="sub-inherit" />
                 Hedef kitleyi üst kategoriden miras al
               </label>
-              {!form.inherit && <SegmentPicker value={form.audience} onChange={(a) => setForm({ ...form, audience: a })} testPrefix="sub-seg" />}
+              {!form.inherit && <AudiencePicker value={form.audience} onChange={(a) => setForm({ ...form, audience: a })} testPrefix="sub-seg" />}
             </div>
           )}
           <DialogFooter>
@@ -345,8 +345,13 @@ export const CategoriesManager = ({ onOpen }) => {
                   </AlertDialog>
                 </div>
 
-                <h3 className="font-heading font-bold text-slate-800 text-lg pr-16">{cat.display_name}</h3>
-                <p className="text-sm text-slate-500 mt-1.5">{desc}</p>
+                <div className="flex items-center gap-2.5 pr-16">
+                  <div className="w-9 h-9 rounded-lg bg-white/70 grid place-items-center text-slate-700 shrink-0">
+                    {cat.icon_image ? <img src={cat.icon_image} alt="" className="w-5 h-5 object-contain" /> : <Icon name={cat.icon} className="w-5 h-5" />}
+                  </div>
+                  <h3 className="font-heading font-bold text-slate-800 text-lg">{cat.display_name}</h3>
+                </div>
+                <p className="text-sm text-slate-500 mt-2">{desc}</p>
                 {cat.status !== "active" && (
                   <span className="mt-3 inline-block text-[11px] rounded-full px-2 py-0.5 bg-white/70 text-slate-500">Pasif</span>
                 )}
@@ -368,8 +373,11 @@ export const CategoriesManager = ({ onOpen }) => {
               onClick={() => toast.info(`${f.label} · yakında eklenecek`)}
               className={`relative cursor-pointer rounded-2xl border ${p.border} ${p.bg} p-6 min-h-[132px] transition-all hover:shadow-md hover:-translate-y-0.5`}>
               <span className="absolute top-3 right-3 text-[10px] rounded-full px-2 py-0.5 bg-white/70 text-slate-500">Yakında</span>
-              <h3 className="font-heading font-bold text-slate-800 text-lg pr-16">{f.label}</h3>
-              <p className="text-sm text-slate-500 mt-1.5">{f.desc}</p>
+              <div className="flex items-center gap-2.5 pr-16">
+                <div className="w-9 h-9 rounded-lg bg-white/70 grid place-items-center text-slate-400 shrink-0"><Icon name={f.icon} className="w-5 h-5" /></div>
+                <h3 className="font-heading font-bold text-slate-800 text-lg">{f.label}</h3>
+              </div>
+              <p className="text-sm text-slate-500 mt-2">{f.desc}</p>
             </div>
           );
         })}
