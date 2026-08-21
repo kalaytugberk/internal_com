@@ -208,4 +208,6 @@ export const api = {
   inbox: (employeeId) => http.get("/notifications/inbox", { params: { employee_id: employeeId } }).then((r) => r.data),
   inboxSeen: (employeeId) => http.post("/notifications/inbox/seen", { employee_id: employeeId }).then((r) => r.data),
   profile: (employeeId) => http.get(`/profile/${employeeId}`).then((r) => r.data),
+  notifPrefs: (employeeId) => http.get("/notifications/prefs", { params: { employee_id: employeeId } }).then((r) => r.data),
+  updateNotifPrefs: (d) => http.put("/notifications/prefs", d).then((r) => r.data),
 };

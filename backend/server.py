@@ -1759,6 +1759,9 @@ async def create_notification(payload: NotificationCreate):
     cat = await db.categories.find_one({"category_type": payload.kind}, {"_id": 0})
     doc = {"id": new_id(), "category_id": cat["id"] if cat else None, **payload.model_dump(), "created_at": now_iso()}
     await db.notifications.insert_one(doc)
+    for e in await db.employees.find({}, {"_id": 0}).to_list(1000):
+        if employee_matches(e, payload.audience):
+            await push_user(e["id"])
     return clean(doc)
 
 
@@ -2686,6 +2689,7 @@ async def create_kudos(p: KudosCreate):
     if status == "published":
         await award_points(p.to_id, cfg["points"]["kudos_received"], "kudos_received", doc["id"])
         await award_points(p.from_id, cfg["points"]["kudos_given"], "kudos_given", doc["id"])
+        await push_user(p.to_id)
     return {**clean(doc), "moderated": status == "pending"}
 
 
@@ -2725,6 +2729,7 @@ async def kudos_approve(kid: str):
         await db.kudos.update_one({"id": kid}, {"$set": {"status": "published"}})
         await award_points(k["to_id"], cfg["points"]["kudos_received"], "kudos_received", kid)
         await award_points(k["from_id"], cfg["points"]["kudos_given"], "kudos_given", kid)
+        await push_user(k["to_id"])
     return {"ok": True}
 
 
@@ -3230,35 +3235,43 @@ async def notify_experts(community_id, actor_id, kind, text, post_id=None):
             "community_id": community_id, "community_name": c.get("name"),
             "post_id": post_id, "text": text, "seen": False, "created_at": now_iso(),
         })
+        await push_user(eid)
 
 
 @api_router.get("/notifications/inbox")
 async def notifications_inbox(employee_id: str):
     cfg = await gami_config()
+    prefs = await get_notif_prefs(employee_id)
     emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
     items = []
-    kud = await db.kudos.find({"to_id": employee_id, "status": "published", "seen_by_recipient": {"$ne": True}}, {"_id": 0}).to_list(100)
-    for k in kud:
-        v = next((x for x in cfg["kudos_values"] if x["key"] == k["value"]), None)
-        frm = emps.get(k["from_id"], {})
-        items.append({"id": "kudos:" + k["id"], "icon": (v or {}).get("icon", "Award"),
-                      "text": f"{frm.get('name')} sana {(v or {}).get('label', k['value'])} kudos'u verdi 🎉",
-                      "sub": k.get("message"), "link": "/ic-iletisim/kudos", "created_at": k["created_at"]})
-    un = await db.user_notifications.find({"employee_id": employee_id, "seen": {"$ne": True}}, {"_id": 0}).to_list(200)
-    for n in un:
-        items.append({"id": "un:" + n["id"], "icon": "MessageSquare" if n.get("kind") == "comment" else "MessagesSquare",
-                      "text": n.get("text"), "sub": n.get("community_name"),
-                      "link": f"/ic-iletisim/topluluk/{n.get('community_id')}", "created_at": n["created_at"]})
+    if prefs["kudos"]:
+        kud = await db.kudos.find({"to_id": employee_id, "status": "published", "seen_by_recipient": {"$ne": True}}, {"_id": 0}).to_list(100)
+        for k in kud:
+            v = next((x for x in cfg["kudos_values"] if x["key"] == k["value"]), None)
+            frm = emps.get(k["from_id"], {})
+            items.append({"id": "kudos:" + k["id"], "icon": (v or {}).get("icon", "Award"),
+                          "text": f"{frm.get('name')} sana {(v or {}).get('label', k['value'])} kudos'u verdi 🎉",
+                          "sub": k.get("message"), "link": "/ic-iletisim/kudos", "created_at": k["created_at"]})
+    if prefs["community"]:
+        un = await db.user_notifications.find({"employee_id": employee_id, "seen": {"$ne": True}}, {"_id": 0}).to_list(200)
+        for n in un:
+            items.append({"id": "un:" + n["id"], "icon": "MessageSquare" if n.get("kind") == "comment" else "MessagesSquare",
+                          "text": n.get("text"), "sub": n.get("community_name"),
+                          "link": f"/ic-iletisim/topluluk/{n.get('community_id')}", "created_at": n["created_at"]})
     emp = emps.get(employee_id)
     if emp:
         for n in await db.notifications.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000):
+            is_acil = n.get("kind") == "isg_acil"
+            if is_acil and not prefs["emergency"]:
+                continue
+            if (not is_acil) and not prefs["instant"]:
+                continue
             if not employee_matches(emp, n.get("audience")):
                 continue
             if await db.notification_responses.find_one({"notification_id": n["id"], "employee_id": employee_id}):
                 continue
             if await db.notif_seen.find_one({"notification_id": n["id"], "employee_id": employee_id}):
                 continue
-            is_acil = n.get("kind") == "isg_acil"
             title = n.get("title") or ("Acil Durum" if is_acil else "Anlık Bildirim")
             items.append({"id": "notif:" + n["id"], "icon": "ShieldAlert" if is_acil else "Bell",
                           "text": f"{title}: {n.get('message', '')[:60]}", "sub": "Yanıt bekleniyor",
@@ -3330,6 +3343,54 @@ async def user_profile(eid: str):
             "metrics": m, "level": cur, "next_level": nxt, "progress": progress, "to_next": to_next,
             "badges": earned_badges(m), "rank": rank, "total_people": len(lb),
             "expert_in": expert_in, "route": route_info, "activity": activity}
+
+
+# ---- Gerçek zamanlı kişisel bildirim kanalı + Bildirim tercihleri ----
+user_manager = ConnectionManager()
+
+
+async def push_user(employee_id):
+    await user_manager.broadcast(employee_id, {"kind": "refresh"})
+
+
+@api_router.websocket("/ws/user/{eid}")
+async def user_ws(ws: WebSocket, eid: str):
+    await user_manager.connect(eid, ws)
+    try:
+        while True:
+            await ws.receive_text()
+    except WebSocketDisconnect:
+        user_manager.disconnect(eid, ws)
+    except Exception:
+        user_manager.disconnect(eid, ws)
+
+
+NOTIF_PREF_DEFAULTS = {"kudos": True, "community": True, "instant": True, "emergency": True}
+
+
+async def get_notif_prefs(eid):
+    d = await db.notif_prefs.find_one({"employee_id": eid}, {"_id": 0}) or {}
+    return {**NOTIF_PREF_DEFAULTS, **{k: v for k, v in d.items() if k in NOTIF_PREF_DEFAULTS}}
+
+
+class NotifPrefs(BaseModel):
+    employee_id: str
+    kudos: Optional[bool] = None
+    community: Optional[bool] = None
+    instant: Optional[bool] = None
+    emergency: Optional[bool] = None
+
+
+@api_router.get("/notifications/prefs")
+async def notif_prefs_get(employee_id: str):
+    return await get_notif_prefs(employee_id)
+
+
+@api_router.put("/notifications/prefs")
+async def notif_prefs_put(p: NotifPrefs):
+    upd = {k: v for k, v in p.model_dump(exclude_none=True).items() if k != "employee_id"}
+    await db.notif_prefs.update_one({"employee_id": p.employee_id}, {"$set": {"employee_id": p.employee_id, **upd}}, upsert=True)
+    return await get_notif_prefs(p.employee_id)
 
 
 app.include_router(api_router)

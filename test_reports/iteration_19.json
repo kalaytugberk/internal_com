@@ -1,0 +1,23 @@
+{
+  "summary": "Faz 6 (WS gerçek zamanlı zil + bildirim tercihleri) frontend testleri BAŞARILI. Prefs dialog açılıyor, 4 switch var, kudos toggle off/on inbox filtresini doğru uyguluyor. Bildirime tıklama /ic-iletisim/kudos'a yönlendiriyor ve menü kapanıyor. WS realtime: Esra→Mert kudos verildikten ~3.5s içinde (30sn interval BEKLENMEDEN) Mert'in zil sayacı 0→1 arttı. Regresyon: profil aktivite filtresi (all/kudos/game/poll) çalışıyor.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "KudosBell.js: WebSocket effect StrictMode altında 'WebSocket is closed before the connection is established' uyarısı üretiyor (dev only, işlevsel etki yok). İstenirse ws.readyState kontrolü veya AbortController pattern eklenebilir.",
+    "openPrefs 80ms setTimeout dropdown->dialog geçişi için gerekli oluyor; testte çalışıyor ancak uzun vadede Radix'in modal={false} + onCloseAutoFocus koordinasyonu daha temiz olur."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100%"},
+  "test_credentials": "Mock auth: pln_role=employee, pln_emp=<id>. Mert=6e5149b3-df66-43f4-a6a8-aaa7986e2720, Esra=04207c49-a270-4568-b417-3c2247b97c44.",
+  "seed_data_creation": "Test sırasında Esra→Mert 3 adet kudos (published) oluşturuldu: 2 'takim' + 1 'inovasyon'. Prefs Mert için varsayılan (hepsi true) sıfırlandı, sonra inbox 'seen' yapıldı.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "KudosBell.js WS URL: wss + /api/ws/user/{eid}. Realtime doğrulama için ext ajanla POST /api/kudos + approve (moderation kapalıyken zaten published döner). Prefs dialog Radix Dropdown->Dialog geçişini 80ms setTimeout ile çözdüğünden playwright'ta escape sonrası ~400ms bekleyip tekrar açmak stabil.",
+  "rca of the issue": "N/A — sorunsuz."
+}
