@@ -206,6 +206,7 @@ export const api = {
   kudosNotifications: (employeeId) => http.get("/kudos/notifications", { params: { employee_id: employeeId } }).then((r) => r.data),
   markKudosSeen: (employeeId) => http.post("/kudos/notifications/seen", { employee_id: employeeId }).then((r) => r.data),
   inbox: (employeeId) => http.get("/notifications/inbox", { params: { employee_id: employeeId } }).then((r) => r.data),
+  inboxAll: (employeeId) => http.get("/notifications/inbox/all", { params: { employee_id: employeeId } }).then((r) => r.data),
   inboxSeen: (employeeId) => http.post("/notifications/inbox/seen", { employee_id: employeeId }).then((r) => r.data),
   profile: (employeeId) => http.get(`/profile/${employeeId}`).then((r) => r.data),
   notifPrefs: (employeeId) => http.get("/notifications/prefs", { params: { employee_id: employeeId } }).then((r) => r.data),

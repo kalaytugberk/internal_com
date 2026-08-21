@@ -3238,26 +3238,31 @@ async def notify_experts(community_id, actor_id, kind, text, post_id=None):
         await push_user(eid)
 
 
-@api_router.get("/notifications/inbox")
-async def notifications_inbox(employee_id: str):
+async def _build_inbox(employee_id, include_seen=False):
     cfg = await gami_config()
     prefs = await get_notif_prefs(employee_id)
     emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
     items = []
     if prefs["kudos"]:
-        kud = await db.kudos.find({"to_id": employee_id, "status": "published", "seen_by_recipient": {"$ne": True}}, {"_id": 0}).to_list(100)
-        for k in kud:
+        q = {"to_id": employee_id, "status": "published"}
+        if not include_seen:
+            q["seen_by_recipient"] = {"$ne": True}
+        for k in await db.kudos.find(q, {"_id": 0}).sort("created_at", -1).to_list(200):
             v = next((x for x in cfg["kudos_values"] if x["key"] == k["value"]), None)
             frm = emps.get(k["from_id"], {})
             items.append({"id": "kudos:" + k["id"], "icon": (v or {}).get("icon", "Award"),
                           "text": f"{frm.get('name')} sana {(v or {}).get('label', k['value'])} kudos'u verdi 🎉",
-                          "sub": k.get("message"), "link": "/ic-iletisim/kudos", "created_at": k["created_at"]})
+                          "sub": k.get("message"), "link": "/ic-iletisim/kudos", "acil": False, "urgent": False,
+                          "seen": bool(k.get("seen_by_recipient")), "created_at": k["created_at"]})
     if prefs["community"]:
-        un = await db.user_notifications.find({"employee_id": employee_id, "seen": {"$ne": True}}, {"_id": 0}).to_list(200)
-        for n in un:
+        q = {"employee_id": employee_id}
+        if not include_seen:
+            q["seen"] = {"$ne": True}
+        for n in await db.user_notifications.find(q, {"_id": 0}).sort("created_at", -1).to_list(200):
             items.append({"id": "un:" + n["id"], "icon": "MessageSquare" if n.get("kind") == "comment" else "MessagesSquare",
                           "text": n.get("text"), "sub": n.get("community_name"),
-                          "link": f"/ic-iletisim/topluluk/{n.get('community_id')}", "created_at": n["created_at"]})
+                          "link": f"/ic-iletisim/topluluk/{n.get('community_id')}", "acil": False, "urgent": False,
+                          "seen": bool(n.get("seen")), "created_at": n["created_at"]})
     emp = emps.get(employee_id)
     if emp:
         for n in await db.notifications.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000):
@@ -3268,17 +3273,32 @@ async def notifications_inbox(employee_id: str):
                 continue
             if not employee_matches(emp, n.get("audience")):
                 continue
-            if await db.notification_responses.find_one({"notification_id": n["id"], "employee_id": employee_id}):
-                continue
-            if await db.notif_seen.find_one({"notification_id": n["id"], "employee_id": employee_id}):
+            responded = await db.notification_responses.find_one({"notification_id": n["id"], "employee_id": employee_id})
+            nseen = await db.notif_seen.find_one({"notification_id": n["id"], "employee_id": employee_id})
+            seen = bool(responded) or bool(nseen)
+            if not include_seen and seen:
                 continue
             title = n.get("title") or ("Acil Durum" if is_acil else "Anlık Bildirim")
             items.append({"id": "notif:" + n["id"], "icon": "ShieldAlert" if is_acil else "Bell",
-                          "text": f"{title}: {n.get('message', '')[:60]}", "sub": "Yanıt bekleniyor",
+                          "text": f"{title}: {n.get('message', '')[:60]}",
+                          "sub": "Yanıtlandı" if responded else "Yanıt bekleniyor",
                           "link": "/ic-iletisim/isg-acil" if is_acil else "/ic-iletisim/anlik",
-                          "created_at": n["created_at"]})
+                          "acil": is_acil, "urgent": is_acil and not seen, "seen": seen, "created_at": n["created_at"]})
     items.sort(key=lambda x: x["created_at"], reverse=True)
+    items.sort(key=lambda x: 0 if x.get("urgent") else 1)
+    return items
+
+
+@api_router.get("/notifications/inbox")
+async def notifications_inbox(employee_id: str):
+    items = await _build_inbox(employee_id, include_seen=False)
     return {"count": len(items), "items": items}
+
+
+@api_router.get("/notifications/inbox/all")
+async def notifications_inbox_all(employee_id: str):
+    items = await _build_inbox(employee_id, include_seen=True)
+    return {"count": len([i for i in items if not i.get("seen")]), "items": items}
 
 
 @api_router.post("/notifications/inbox/seen")

@@ -22,9 +22,12 @@ export const KudosBell = () => {
   const [open, setOpen] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [prefs, setPrefs] = useState(null);
+  const [tab, setTab] = useState("yeni");
+  const [allItems, setAllItems] = useState([]);
   const wsRef = useRef(null);
 
   const load = () => { if (currentEmployeeId) api.inbox(currentEmployeeId).then((r) => setItems(r.items || [])); };
+  const loadAll = () => { if (currentEmployeeId) api.inboxAll(currentEmployeeId).then((r) => setAllItems(r.items || [])); };
   useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, [currentEmployeeId, role]);
 
   useEffect(() => {
@@ -40,14 +43,26 @@ export const KudosBell = () => {
     // eslint-disable-next-line
   }, [currentEmployeeId]);
 
-  const markSeen = async () => { if (currentEmployeeId) { await api.inboxSeen(currentEmployeeId); setItems([]); } };
+  const markSeen = async () => { if (currentEmployeeId) { await api.inboxSeen(currentEmployeeId); setItems([]); loadAll(); } };
   const openItem = async (it) => { setOpen(false); if (it.link) navigate(it.link); if (currentEmployeeId) { await api.inboxSeen(currentEmployeeId); setItems([]); } };
   const openPrefs = () => { setOpen(false); setTimeout(() => { setPrefsOpen(true); if (currentEmployeeId) api.notifPrefs(currentEmployeeId).then(setPrefs); }, 80); };
+
+  const NotifRow = (it) => (
+    <button key={it.id} data-testid={`notif-item-${it.id}`} onClick={() => openItem(it)}
+      className={`w-full text-left flex items-start gap-2.5 px-3 py-2.5 hover:bg-slate-50 transition-colors ${it.seen ? "opacity-60" : ""}`}>
+      <div className={`w-8 h-8 rounded-full grid place-items-center shrink-0 ${it.acil ? "bg-rose-100 text-rose-600" : "bg-blue-50 text-blue-600"}`}><Icon name={it.icon} className="w-4 h-4" /></div>
+      <div className="text-sm text-slate-600 flex-1 min-w-0">
+        {it.acil && <span data-testid="notif-urgent-badge" className="inline-block mb-0.5 text-[10px] font-bold text-white bg-rose-500 rounded px-1.5 py-0.5">ACİL</span>}
+        <p className="break-words">{it.text}</p>
+        {it.sub && <p className="text-xs text-slate-400 mt-0.5">{it.sub}</p>}
+      </div>
+    </button>
+  );
   const togglePref = async (key, val) => { const r = await api.updateNotifPrefs({ employee_id: currentEmployeeId, [key]: val }); setPrefs(r); load(); };
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={(o) => { setOpen(o); if (o) load(); }}>
+      <DropdownMenu open={open} onOpenChange={(o) => { setOpen(o); if (o) { load(); if (tab === "tumu") loadAll(); } }}>
         <DropdownMenuTrigger asChild>
           <button data-testid="notifications-btn" aria-label="Bildirimler" className="relative p-2 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
             <Bell className="w-5 h-5" />
@@ -62,19 +77,19 @@ export const KudosBell = () => {
               <button data-testid="notif-prefs-btn" onClick={openPrefs} aria-label="Bildirim tercihleri" className="text-slate-400 hover:text-slate-600"><Settings className="w-3.5 h-3.5" /></button>
             </div>
           </DropdownMenuLabel>
+          <div className="flex gap-1 px-2 pb-1">
+            {[["yeni", `Yeni${items.length ? ` (${items.length})` : ""}`], ["tumu", "Tümü"]].map(([k, l]) => (
+              <button key={k} data-testid={`notif-tab-${k}`} onClick={() => { setTab(k); if (k === "tumu") loadAll(); }}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${tab === k ? "bg-slate-100 text-slate-800" : "text-slate-500 hover:text-slate-700"}`}>{l}</button>
+            ))}
+          </div>
           <DropdownMenuSeparator />
-          {items.length === 0 ? (
-            <div className="py-6 text-center text-sm text-slate-400">Yeni bildirim yok</div>
-          ) : (
-            <div className="max-h-80 overflow-y-auto pln-scroll">
-              {items.map((it) => (
-                <button key={it.id} data-testid={`notif-item-${it.id}`} onClick={() => openItem(it)} className="w-full text-left flex items-start gap-2.5 px-3 py-2.5 hover:bg-slate-50 transition-colors">
-                  <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 grid place-items-center shrink-0"><Icon name={it.icon} className="w-4 h-4" /></div>
-                  <div className="text-sm text-slate-600">{it.text}{it.sub && <p className="text-xs text-slate-400 mt-0.5">{it.sub}</p>}</div>
-                </button>
-              ))}
-            </div>
-          )}
+          {(() => {
+            const list = tab === "yeni" ? items : allItems;
+            return list.length === 0
+              ? <div className="py-6 text-center text-sm text-slate-400">{tab === "yeni" ? "Yeni bildirim yok" : "Bildirim geçmişi boş"}</div>
+              : <div className="max-h-80 overflow-y-auto pln-scroll">{list.map(NotifRow)}</div>;
+          })()}
         </DropdownMenuContent>
       </DropdownMenu>
 
