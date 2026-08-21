@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api } from "@/api";
 import { useApp } from "@/context/AppContext";
 import { Icon } from "@/lib/icons";
@@ -9,20 +9,23 @@ const COLORS = { sky: "bg-sky-50 text-sky-600", violet: "bg-violet-50 text-viole
 
 export const ProfilePage = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const { currentEmployeeId } = useApp();
+  const targetId = id || currentEmployeeId;
   const [p, setP] = useState(null);
 
-  useEffect(() => { if (currentEmployeeId) api.profile(currentEmployeeId).then(setP); }, [currentEmployeeId]);
+  useEffect(() => { setP(null); if (targetId) api.profile(targetId).then(setP); }, [targetId]);
 
-  if (!currentEmployeeId) return <div className="max-w-4xl mx-auto px-6 py-16 text-center text-slate-400">Profil görmek için üst menüden bir çalışan seçin.</div>;
+  if (!targetId) return <div className="max-w-4xl mx-auto px-6 py-16 text-center text-slate-400">Profil görmek için üst menüden bir çalışan seçin.</div>;
   if (!p) return <div className="max-w-4xl mx-auto px-6 py-16 text-center text-slate-400" data-testid="profile-loading">Yükleniyor...</div>;
 
   const e = p.employee;
   const earned = p.badges.filter((b) => b.earned).length;
+  const isOwn = !id || id === currentEmployeeId;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8" data-testid="profile-page">
-      <button data-testid="profile-back" onClick={() => navigate("/ic-iletisim")} className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-4"><ChevronLeft className="w-4 h-4" /> İç İletişim</button>
+      <button data-testid="profile-back" onClick={() => (isOwn ? navigate("/ic-iletisim") : navigate(-1))} className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-4"><ChevronLeft className="w-4 h-4" /> {isOwn ? "İç İletişim" : "Geri"}</button>
 
       <div className="rounded-2xl border border-slate-100 shadow-sm p-6 bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center gap-5 flex-wrap">
         {e.avatar ? <img src={e.avatar} alt="" className="w-20 h-20 rounded-2xl object-cover bg-white/20" /> : <div className="w-20 h-20 rounded-2xl bg-white/20 grid place-items-center text-2xl font-bold">{(e.name || "?").charAt(0)}</div>}
@@ -95,7 +98,7 @@ export const ProfilePage = () => {
               <p className="font-semibold text-slate-800">{p.route.route_name} <span className="text-xs font-normal text-slate-400">({p.route.direction === "donus" ? "Dönüş" : "Gidiş"})</span></p>
               <p className="text-sm text-slate-600 mt-1 flex items-center gap-1.5"><MapPin className="w-4 h-4 text-emerald-500" /> {p.route.stop_name} {p.route.time && <span className="text-slate-400">· {p.route.time}</span>}</p>
             </div>
-          ) : <p className="text-sm text-slate-400">Servis durağı seçilmemiş. <button onClick={() => navigate("/ic-iletisim/servis")} className="text-blue-600 hover:underline">Servis seç</button></p>}
+          ) : <p className="text-sm text-slate-400">Servis durağı seçilmemiş.{isOwn && <> <button onClick={() => navigate("/ic-iletisim/servis")} className="text-blue-600 hover:underline">Servis seç</button></>}</p>}
         </div>
       </div>
     </div>

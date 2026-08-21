@@ -14,20 +14,23 @@ const Avatar = ({ url, name, size = "w-12 h-12" }) =>
 
 const RANK_TONE = ["text-amber-500", "text-slate-400", "text-orange-400"];
 
-const Leaderboard = ({ rows, highlightId }) => (
+const Leaderboard = ({ rows, highlightId }) => {
+  const navigate = useNavigate();
+  return (
   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-50">
     {rows.map((r) => (
-      <div key={r.employee_id} data-testid={`lb-row-${r.employee_id}`}
-        className={`flex items-center gap-3 p-3.5 ${r.employee_id === highlightId ? "bg-blue-50/60" : ""}`}>
+      <button key={r.employee_id} data-testid={`lb-row-${r.employee_id}`} onClick={() => navigate(`/profil/${r.employee_id}`)}
+        className={`w-full text-left flex items-center gap-3 p-3.5 transition-colors hover:bg-slate-50 ${r.employee_id === highlightId ? "bg-blue-50/60" : ""}`}>
         <div className={`w-7 text-center font-bold ${r.rank <= 3 ? RANK_TONE[r.rank - 1] : "text-slate-400"}`}>{r.rank}</div>
         <Avatar url={r.avatar} name={r.name} size="w-9 h-9" />
         <div className="flex-1 min-w-0"><p className="font-semibold text-slate-800 text-sm truncate">{r.name}</p><p className="text-[11px] text-slate-400">Seviye {r.level} · {r.level_name}</p></div>
         {r.streak > 0 && <span className="inline-flex items-center gap-0.5 text-[11px] text-orange-500"><Flame className="w-3.5 h-3.5" />{r.streak}</span>}
         <span className="inline-flex items-center gap-1 text-sm font-bold text-blue-600"><Zap className="w-4 h-4" />{r.points}</span>
-      </div>
+      </button>
     ))}
   </div>
-);
+  );
+};
 
 export const GamificationPage = () => {
   const navigate = useNavigate();

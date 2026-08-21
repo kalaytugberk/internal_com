@@ -81,6 +81,7 @@ function App() {
               <Route path="/ic-iletisim/topluluk" element={<CommunitiesFeed />} />
               <Route path="/ic-iletisim/topluluk/:id" element={<CommunityDetail />} />
               <Route path="/profil" element={<ProfilePage />} />
+              <Route path="/profil/:id" element={<ProfilePage />} />
               <Route path="/ik" element={<AdminRoute><HRPage /></AdminRoute>} />
               <Route path="/takvim" element={<CalendarPage />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />

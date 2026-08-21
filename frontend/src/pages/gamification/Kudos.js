@@ -30,16 +30,17 @@ const Avatar = ({ url, name, size = "w-11 h-11" }) =>
   );
 
 const KudosCard = ({ k, testid, actions }) => {
+  const navigate = useNavigate();
   const tone = TONE[k.value_color] || TONE.sky;
   return (
     <div data-testid={testid} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <div className="flex items-start gap-3">
-        <Avatar url={k.to_avatar} name={k.to_name} />
+        <button onClick={() => navigate(`/profil/${k.to_id}`)} data-testid={`kudos-avatar-${k.id}`}><Avatar url={k.to_avatar} name={k.to_name} /></button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-slate-800">{k.from_name}</span>
+            <button onClick={() => navigate(`/profil/${k.from_id}`)} data-testid={`kudos-from-${k.id}`} className="font-semibold text-slate-800 hover:text-blue-600 hover:underline">{k.from_name}</button>
             <span className="text-slate-400 text-sm">→</span>
-            <span className="font-semibold text-slate-800">{k.to_name}</span>
+            <button onClick={() => navigate(`/profil/${k.to_id}`)} data-testid={`kudos-to-link-${k.id}`} className="font-semibold text-slate-800 hover:text-blue-600 hover:underline">{k.to_name}</button>
           </div>
           <span className={`mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium rounded-full border px-2.5 py-1 ${tone}`}>
             <Icon name={k.value_icon} className="w-3.5 h-3.5" /> {k.value_label}
