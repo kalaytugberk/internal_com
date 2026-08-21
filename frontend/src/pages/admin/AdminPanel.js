@@ -12,7 +12,9 @@ import { NotificationsManager } from "@/pages/notifications/NotificationsManager
 import { HapBilgiManager } from "@/pages/hapbilgi/HapBilgi";
 import { DiscountsManager } from "@/pages/discounts/Discounts";
 import { CanteenManager } from "@/pages/canteen/Canteen";
-import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile, Tag, Sparkles, Bus, Bell, ShieldAlert, Lightbulb, Percent, Utensils } from "lucide-react";
+import { IsgRamakManager } from "@/pages/isgramak/IsgRamak";
+import { RoomsManager } from "@/pages/rooms/MeetingRooms";
+import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile, Tag, Sparkles, Bus, Bell, ShieldAlert, Lightbulb, Percent, Utensils, AlertTriangle, DoorOpen } from "lucide-react";
 
 const TABS = [
   { key: "categories", label: "Kategori Yönetimi", icon: Layers },
@@ -28,6 +30,8 @@ const TABS = [
   { key: "hapbilgi", label: "Hap Bilgi", icon: Lightbulb },
   { key: "indirim", label: "İndirim & Ayrıcalıklar", icon: Percent },
   { key: "yemekhane", label: "Yemekhane Listesi", icon: Utensils },
+  { key: "isgramak", label: "İSG — Ramak Kala", icon: AlertTriangle },
+  { key: "rooms", label: "Toplantı Odası", icon: DoorOpen },
 ];
 
 export const AdminPanel = () => {
@@ -70,6 +74,8 @@ export const AdminPanel = () => {
       {tab === "hapbilgi" && <HapBilgiManager />}
       {tab === "indirim" && <DiscountsManager />}
       {tab === "yemekhane" && <CanteenManager />}
+      {tab === "isgramak" && <IsgRamakManager />}
+      {tab === "rooms" && <RoomsManager />}
     </div>
   );
 };

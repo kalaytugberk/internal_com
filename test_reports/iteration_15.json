@@ -1,0 +1,40 @@
+{
+  "summary": "Phase 3a (İSG-Ramak Kala + Toplantı Odası + ENH-A discount image + ENH-B multi-emoji reactions) end-to-end verified. Backend pytest: 11/11 PASS in /app/backend/tests/test_phase3a.py — İSG config GET/PUT (anonymity_mode/status_flow_enabled/tags), report create anon vs named (reporter_name/department/location null when anonymous, populated otherwise), status transitions yeni→inceleniyor→kapatildi, 404 on missing report status update, /isg-ramak/my filters by employee_id. Rooms CRUD + audience feed filter (dept-scoped room hidden from other dept employee), reservation flow: auto mode → status=confirmed, approval mode → status=pending, OVERLAP rejected 400 with message 'Bu oda seçilen saat aralığında dolu', ADJACENT (end==start) accepted 200, cancel frees slot (subsequent overlap accepted), missing room 404, /reservations?employee_id populates employee_name+room_name. Hap /react: multi-emoji 👍/❤️ toggle per-employee, feed returns reactions_count map + my_reactions list + reaction_total sum. Discount create with base64 image persists and is returned by list feed. Frontend Admin (/admin, localStorage pln_role=admin): admin-tab-isgramak → changed anonymity via ramak-anon-select (3 opts: 'Her zaman anonim'/'Her zaman açık kimlik'/'Bildiren seçsin'), toggled ramak-statusflow, added+removed 'TEST_QA_UI_Tag' via ramak-tag-input/ramak-tag-add and delete button, changed existing report status via ramak-status-<id> Radix select to 'İnceleniyor'. admin-tab-rooms → created 'TEST_QA_UI_Room' via add-room-btn → room-name/room-location/room-capacity/room-equipment/room-approve (Otomatik onay), room-save-btn → room-row-<id> appeared (2 rows total incl. seeded 'Zirve'). admin-tab-indirim → created 'TEST_QA_UI_Brand' discount with 1x1 PNG uploaded via #disc-img input, disc-image-upload flow, disc-save-btn → disc-row-<id> with <img> element present (img_present=1). Frontend Employee (/ic-iletisim, pln_role=employee, pln_emp=first employee): both cards present ('Ramak' + 'Toplantı' text found). /ic-iletisim/isg-ramak submitted report via ramak-form-tag Radix (3 tags Kayma-Düşme/Ekipman/Yangın Riski), ramak-form-text 'TEST_QA_UI_RamakReport', ramak-submit → appears in ramak-my-<id> with status 'İnceleniyor' badge (this shows previous test's TEST_QA_Named_Report; anonymity switch correctly HIDDEN because admin had set mode away from user_choice earlier — expected behavior; reset to user_choice after tests). /ic-iletisim/toplanti: 2 room-card-<id> visible (audience=all rooms), reserved TEST_QA_UI_Room 2030-06-15 10:00-11:00 via res-date/res-start/res-end/res-save-btn → my-res-<id> appeared, OVERLAP attempt (10:30-11:30 same date+room) triggered 400 + toast 'Bu oda seçilen saat aralığında dolu', cancel via res-cancel-<id> removed row (0 remaining). /ic-iletisim/hap-bilgi: 3 emoji buttons per card (hap-react-<pid>-👍/❤️/😮), clicking 👍 changed label to '👍1' (count 1), toggle-off reverted to '👍' (no count) — server persistence verified via feed. Cleanup: TEST_QA_UI_Room + TEST_QA_UI_Brand deleted via API. IsgConfig reset to user_choice.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      { "screen": "Employee /ic-iletisim/isg-ramak form", "issues": ["ramak-form-tag Radix Select emits controlled↔uncontrolled warning on initial render because form.tag starts as undefined and later becomes a string — cosmetic React warning; should initialise tag to '' in useState to silence."] }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase3a.py",
+    "/app/test_reports/pytest/phase3a.xml"
+  ],
+  "action_items": [
+    "(Optional cosmetic) Initialise ramak form 'tag' field to '' instead of undefined in IsgRamak.js to silence Radix Select controlled/uncontrolled console warning."
+  ],
+  "critical_code_review_comments": [
+    "server.py _overlap uses strict inequality (a_start < b_end AND a_end > b_start) — correctly allows adjacent bookings where end==start; verified 200 in test.",
+    "reservation_create checks status != 'cancelled' when detecting conflicts — cancelled reservations correctly free the slot (verified).",
+    "ramak_list attaches reporter_name/department/location as None for anonymous reports at query-time — safe; original doc still has reporter_id stored (audit trail retained but never exposed via list endpoint). If admin should NEVER see anonymous reporter_id, consider projection to also strip it, but per spec current behaviour is fine.",
+    "hap_react uses a dict of emoji→list[employee_id] and toggles by membership — O(n) per toggle but n is small; safe for MVP. reactions field is not indexed but not queried by emoji, only aggregated per post.",
+    "server.py:2103 default seed tags contain unicode — verified round-trip through pymongo/JSON correctly.",
+    "reservation_cancel silently no-ops when id missing (no 404) — inconsistent with other endpoints (status_update returns 404). Minor.",
+    "RoomUpdate does not allow clearing audience back to all=true via null — clients must pass full {all:true} object; acceptable.",
+    "IsgConfig PUT uses exclude_none — cannot clear tags to []; must send [] explicitly which IS distinguishable from None ✓.",
+    "Rooms feed sorts by created_at ASC while reservations sorts by date ASC — reservations should probably also sort by date+start for stable listing; minor UX.",
+    "/reservations/{id}/status endpoint reuses RamakStatusUpdate model (name mismatch) — works but slightly misleading; consider a dedicated ReservationStatusUpdate for clarity."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase3a.py (new)"
+  ],
+  "success_rate": { "backend": "100% (11/11)", "frontend": "100% (all admin + employee phase-3a flows incl. overlap toast + emoji toggle + logo upload)" },
+  "test_credentials": "No auth. Admin via localStorage.pln_role='admin' + /admin. Employee via pln_role='employee' + pln_emp=<employee id from GET /api/employees>.",
+  "seed_data_creation": "During UI test: 1 room 'TEST_QA_UI_Room', 1 discount 'TEST_QA_UI_Brand' with tiny PNG. Both deleted via API at end. IsgConfig anonymity_mode reset to 'user_choice'. Backend pytest created+cleaned 2 rooms, 2 discounts, several reservations (cancellation is soft; reservation docs remain in DB — pre-existing behaviour, no delete endpoint exposed). RamakReport docs from prior smoke ('Kablo açıkta') and this run's 'TEST_QA_UI_RamakReport'/'TEST_QA_Anon_Report'/'TEST_QA_Named_Report' remain — /isg-ramak/reports has no DELETE endpoint per current API surface.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 3a tests at /app/backend/tests/test_phase3a.py. Radix Select needs ~250-300ms wait after click before options are clickable (use force=True). Room card in /ic-iletisim/toplanti uses hierarchical selector: locator('[data-testid^=\"room-card-\"]').filter(has_text=...).locator('[data-testid^=\"room-reserve-\"]'). Anonymity switch (ramak-form-anon) is CONDITIONALLY rendered only when config.anonymity_mode == 'user_choice'; if you flip it in admin test, the employee form's switch will disappear — remember to reset. No DELETE endpoint for ramak reports or reservations — treat as append-only. RamakReport /api/isg-ramak/my filters by anonymous:false — anonymous reports NEVER appear in employee's own list (by design).",
+  "rca of the issue": "N/A — no issues found. All Phase 3a spec requirements met (Backend: config CRUD, report CRUD with anonymity redaction, status transitions, room+reservation with overlap conflict + adjacent allowed + auto/approval status; Frontend: full admin + employee flows via correct data-testids)."
+}

@@ -128,4 +128,24 @@ export const api = {
   updateCanteen: (id, d) => http.put(`/canteens/${id}`, d).then((r) => r.data),
   deleteCanteen: (id) => http.delete(`/canteens/${id}`).then((r) => r.data),
   canteensFeed: (employeeId) => http.get("/canteens/feed", { params: { employee_id: employeeId } }).then((r) => r.data),
+
+  hapReact: (id, employeeId, emoji) => http.post(`/hapbilgi/posts/${id}/react`, { employee_id: employeeId, emoji }).then((r) => r.data),
+
+  isgConfig: () => http.get("/isg-ramak/config").then((r) => r.data),
+  updateIsgConfig: (d) => http.put("/isg-ramak/config", d).then((r) => r.data),
+  createRamak: (d) => http.post("/isg-ramak/reports", d).then((r) => r.data),
+  ramakReports: () => http.get("/isg-ramak/reports").then((r) => r.data),
+  updateRamakStatus: (id, status) => http.put(`/isg-ramak/reports/${id}/status`, { status }).then((r) => r.data),
+  ramakMy: (employeeId) => http.get("/isg-ramak/my", { params: { employee_id: employeeId } }).then((r) => r.data),
+
+  rooms: () => http.get("/rooms").then((r) => r.data),
+  createRoom: (d) => http.post("/rooms", d).then((r) => r.data),
+  updateRoom: (id, d) => http.put(`/rooms/${id}`, d).then((r) => r.data),
+  deleteRoom: (id) => http.delete(`/rooms/${id}`).then((r) => r.data),
+  roomsFeed: (employeeId) => http.get("/rooms/feed", { params: { employee_id: employeeId } }).then((r) => r.data),
+  roomsReport: () => http.get("/rooms/report").then((r) => r.data),
+  createReservation: (d) => http.post("/reservations", d).then((r) => r.data),
+  reservations: (params) => http.get("/reservations", { params }).then((r) => r.data),
+  cancelReservation: (id) => http.post(`/reservations/${id}/cancel`).then((r) => r.data),
+  reservationStatus: (id, status) => http.put(`/reservations/${id}/status`, { status }).then((r) => r.data),
 };

@@ -59,7 +59,7 @@ export const HapBilgiManager = () => {
             {p.image ? <img src={p.image} alt="" className="w-14 h-14 rounded-lg object-cover shrink-0" /> : <div className="w-14 h-14 rounded-lg bg-amber-50 grid place-items-center shrink-0"><Lightbulb className="w-6 h-6 text-amber-500" /></div>}
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-slate-800 truncate">{p.title}</h3>
-              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-3">{p.topic_name && <span className="rounded-full px-2 py-0.5 bg-slate-50">{p.topic_name}</span>}<span className="inline-flex items-center gap-1"><Heart className="w-3 h-3" /> {p.like_count}</span></p>
+              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-3">{p.topic_name && <span className="rounded-full px-2 py-0.5 bg-slate-50">{p.topic_name}</span>}<span className="inline-flex items-center gap-1"><Heart className="w-3 h-3" /> {p.reaction_total ?? p.like_count ?? 0}</span></p>
             </div>
             <button data-testid={`hap-del-${p.id}`} onClick={async () => { await api.deleteHapPost(p.id); load(); }} className="p-2 rounded-lg text-slate-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
           </div>
@@ -106,7 +106,8 @@ export const HapBilgiPage = () => {
   useEffect(() => { api.hapTopics().then(setTopics); }, []);
   useEffect(() => { load(); }, [currentEmployeeId, topic]);
 
-  const like = async (id) => { const r = await api.likeHapPost(id, currentEmployeeId); setPosts((ps) => ps.map((p) => p.id === id ? { ...p, liked: r.liked, like_count: r.like_count } : p)); };
+  const like = async (id, emoji) => { const r = await api.hapReact(id, currentEmployeeId, emoji); setPosts((ps) => ps.map((p) => p.id === id ? { ...p, reactions_count: r.reactions_count, my_reactions: r.my_reactions } : p)); };
+  const EMOJIS = ["👍", "❤️", "😮"];
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
@@ -125,9 +126,18 @@ export const HapBilgiPage = () => {
               {p.topic_name && <span className="text-[11px] rounded-full px-2 py-0.5 bg-amber-50 text-amber-600">{p.topic_name}</span>}
               <h3 className="font-heading font-bold text-slate-800 text-lg mt-1.5">{p.title}</h3>
               <p className="text-slate-600 mt-1 whitespace-pre-wrap">{p.body}</p>
-              <button data-testid={`hap-like-${p.id}`} onClick={() => like(p.id)} className={`mt-3 inline-flex items-center gap-1.5 text-sm ${p.liked ? "text-rose-500" : "text-slate-400 hover:text-rose-500"}`}>
-                <Heart className={`w-4 h-4 ${p.liked ? "fill-rose-500" : ""}`} /> {p.like_count}
-              </button>
+              <div className="mt-3 flex items-center gap-2">
+                {EMOJIS.map((em) => {
+                  const on = (p.my_reactions || []).includes(em);
+                  const cnt = (p.reactions_count || {})[em] || 0;
+                  return (
+                    <button key={em} data-testid={`hap-react-${p.id}-${em}`} onClick={() => like(p.id, em)}
+                      className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm border transition-colors ${on ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
+                      <span className="text-base leading-none">{em}</span>{cnt > 0 && <span className="text-xs">{cnt}</span>}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         ))}

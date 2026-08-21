@@ -65,14 +65,14 @@ const CATALOG = {
   hap_bilgi: { tab: "hapbilgi", desc: "Konu bazlı kısa bilgilendirmeler." },
   indirim: { tab: "indirim", desc: "Çalışan indirim ve ayrıcalıklarını yönet." },
   yemekhane: { tab: "yemekhane", desc: "Yemekhane menülerini gün bazında tanımla." },
+  isg_ramak: { tab: "isgramak", desc: "Ramak kala bildirimleri ve durum takibi." },
+  toplanti_odasi: { tab: "rooms", desc: "Toplantı odası tanımları ve rezervasyonlar." },
 };
 
 // Henüz yapılmamış kategoriler (yakında)
 const FUTURE_CATALOG = [
   { key: "kudos", label: "Kudos", desc: "Takdir ve teşekkür kuralları.", icon: "Award" },
   { key: "rozet", label: "Rozet / oyunlaştırma", desc: "Puan kaynakları ve rozet kriterleri.", icon: "Trophy" },
-  { key: "indirim", label: "İndirim & ayrıcalıklar", desc: "Çalışan indirimlerini buradan girin.", icon: "Percent" },
-  { key: "toplanti_odasi", label: "Toplantı odası", desc: "Oda tanımları ve rezervasyon kuralları.", icon: "DoorOpen" },
   { key: "sirket_enleri", label: "Şirketin enleri", desc: "Ayın çalışanı ve ödül başlıkları.", icon: "Star" },
 ];
 

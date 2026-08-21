@@ -24,9 +24,10 @@ export const DiscountsManager = () => {
   useEffect(() => { load(); }, []);
 
   const addCat = async () => { if (!newCat.trim()) return; await api.createDiscCat({ name: newCat }); setNewCat(""); load(); };
+  const onLogo = (e) => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = () => setForm((p) => ({ ...p, image: r.result })); r.readAsDataURL(f); };
   const save = async () => {
     if (!form.brand.trim()) return toast.error("Firma/marka zorunlu");
-    await api.createDiscount({ brand: form.brand, description: form.description, rate: form.rate, contact: form.contact, category_id: form.category_id || null, required_points: form.required_points ? parseInt(form.required_points, 10) : null, audience: form.audience });
+    await api.createDiscount({ brand: form.brand, description: form.description, rate: form.rate, contact: form.contact, image: form.image || null, category_id: form.category_id || null, required_points: form.required_points ? parseInt(form.required_points, 10) : null, audience: form.audience });
     setOpen(false); load(); toast.success("İndirim eklendi");
   };
 
@@ -50,7 +51,7 @@ export const DiscountsManager = () => {
         {items.length === 0 && <div className="text-sm text-slate-400 py-10 text-center">Henüz indirim yok.</div>}
         {items.map((d) => (
           <div key={d.id} data-testid={`disc-row-${d.id}`} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
-            <div className="w-14 h-14 rounded-lg bg-emerald-50 grid place-items-center shrink-0"><Percent className="w-6 h-6 text-emerald-500" /></div>
+            {d.image ? <img src={d.image} alt="" className="w-14 h-14 rounded-lg object-cover shrink-0" /> : <div className="w-14 h-14 rounded-lg bg-emerald-50 grid place-items-center shrink-0"><Percent className="w-6 h-6 text-emerald-500" /></div>}
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-slate-800 truncate">{d.brand} {d.rate && <span className="text-emerald-600">· {d.rate}</span>}</h3>
               <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-3 flex-wrap">{d.category_name && <span className="rounded-full px-2 py-0.5 bg-slate-50">{d.category_name}</span>}<span>Hedef: {audienceSummary(d.audience)}</span>{d.required_points ? <span className="text-amber-600">Eşik: {d.required_points}p</span> : null}</p>
@@ -71,6 +72,12 @@ export const DiscountsManager = () => {
               </div>
               <div><Label className="mb-1.5 block">Açıklama</Label><Textarea data-testid="disc-desc" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
               <div><Label className="mb-1.5 block">İletişim (kod yok, bilgi)</Label><Input data-testid="disc-contact" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} /></div>
+              <div>
+                <Label className="mb-1.5 block">Logo / Görsel (opsiyonel)</Label>
+                <input id="disc-img" type="file" accept="image/*" onChange={onLogo} className="hidden" />
+                <Button type="button" variant="outline" onClick={() => document.getElementById("disc-img").click()} data-testid="disc-image-upload">Yükle</Button>
+                {form.image && <img src={form.image} alt="" className="mt-2 h-16 rounded-lg object-cover" />}
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="mb-1.5 block">Alt Kategori</Label>
@@ -100,11 +107,14 @@ export const DiscountsPage = () => {
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
         {items.length === 0 && <div className="sm:col-span-2 rounded-2xl border border-dashed border-slate-300 bg-white/70 py-16 text-center text-slate-400 text-sm">Sana açık indirim yok.</div>}
         {items.map((d) => (
-          <div key={d.id} data-testid={`disc-card-${d.id}`} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-            <div className="flex items-center justify-between"><h3 className="font-heading font-bold text-slate-800 text-lg">{d.brand}</h3>{d.rate && <span className="text-emerald-600 font-bold">{d.rate}</span>}</div>
-            {d.category_name && <span className="text-[11px] rounded-full px-2 py-0.5 bg-emerald-50 text-emerald-600">{d.category_name}</span>}
-            <p className="text-slate-600 mt-2 text-sm whitespace-pre-wrap">{d.description}</p>
-            {d.contact && <p className="text-xs text-slate-400 mt-2">İletişim: {d.contact}</p>}
+          <div key={d.id} data-testid={`disc-card-${d.id}`} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            {d.image && <img src={d.image} alt="" className="w-full h-32 object-cover" />}
+            <div className="p-5">
+              <div className="flex items-center justify-between"><h3 className="font-heading font-bold text-slate-800 text-lg">{d.brand}</h3>{d.rate && <span className="text-emerald-600 font-bold">{d.rate}</span>}</div>
+              {d.category_name && <span className="text-[11px] rounded-full px-2 py-0.5 bg-emerald-50 text-emerald-600">{d.category_name}</span>}
+              <p className="text-slate-600 mt-2 text-sm whitespace-pre-wrap">{d.description}</p>
+              {d.contact && <p className="text-xs text-slate-400 mt-2">İletişim: {d.contact}</p>}
+            </div>
           </div>
         ))}
       </div>

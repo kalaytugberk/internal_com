@@ -50,6 +50,8 @@ export const InternalComms = () => {
     else if (cat.category_type === "hap_bilgi") navigate("/ic-iletisim/hap-bilgi");
     else if (cat.category_type === "indirim") navigate("/ic-iletisim/indirim");
     else if (cat.category_type === "yemekhane") navigate("/ic-iletisim/yemekhane");
+    else if (cat.category_type === "isg_ramak") navigate("/ic-iletisim/isg-ramak");
+    else if (cat.category_type === "toplanti_odasi") navigate("/ic-iletisim/toplanti");
   };
 
   return (

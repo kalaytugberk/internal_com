@@ -21,6 +21,8 @@ import { NotificationsPage } from "@/pages/notifications/NotificationsPage";
 import { HapBilgiPage } from "@/pages/hapbilgi/HapBilgi";
 import { DiscountsPage } from "@/pages/discounts/Discounts";
 import { CanteenPage } from "@/pages/canteen/Canteen";
+import { IsgRamakPage } from "@/pages/isgramak/IsgRamak";
+import { RoomsPage } from "@/pages/rooms/MeetingRooms";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import { MoodReminderBanner } from "@/components/MoodReminderBanner";
 import { AdminPanel } from "@/pages/admin/AdminPanel";
@@ -61,6 +63,8 @@ function App() {
               <Route path="/ic-iletisim/hap-bilgi" element={<HapBilgiPage />} />
               <Route path="/ic-iletisim/indirim" element={<DiscountsPage />} />
               <Route path="/ic-iletisim/yemekhane" element={<CanteenPage />} />
+              <Route path="/ic-iletisim/isg-ramak" element={<IsgRamakPage />} />
+              <Route path="/ic-iletisim/toplanti" element={<RoomsPage />} />
               <Route path="/ik" element={<AdminRoute><HRPage /></AdminRoute>} />
               <Route path="/takvim" element={<CalendarPage />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />

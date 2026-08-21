@@ -1812,6 +1812,7 @@ class DiscountCreate(BaseModel):
     description: str = ""
     rate: str = ""
     contact: str = ""
+    image: Optional[str] = None
     required_points: Optional[int] = None
     audience: Dict[str, Any] = Field(default_factory=lambda: {"all": True})
 
@@ -1841,6 +1842,11 @@ class CanteenUpdate(BaseModel):
 
 class LikePayload(BaseModel):
     employee_id: str
+
+
+class ReactPayload(BaseModel):
+    employee_id: str
+    emoji: str
 
 
 async def seed_phase2_cats():
@@ -1884,13 +1890,14 @@ async def hap_posts():
     posts = await db.hap_posts.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     for p in posts:
         p["like_count"] = len(p.get("likes") or [])
+        p["reaction_total"] = sum(len(v) for v in (p.get("reactions") or {}).values())
         p["topic_name"] = _topic_name(topics, p.get("topic_id"))
     return posts
 
 
 @api_router.post("/hapbilgi/posts")
 async def hap_post_create(p: HapPostCreate):
-    doc = {"id": new_id(), **p.model_dump(), "likes": [], "created_at": now_iso()}
+    doc = {"id": new_id(), **p.model_dump(), "likes": [], "reactions": {}, "created_at": now_iso()}
     await db.hap_posts.insert_one(doc)
     return clean(doc)
 
@@ -1907,25 +1914,28 @@ async def hap_feed(employee_id: str, topic_id: Optional[str] = None):
     q = {"topic_id": topic_id} if topic_id else {}
     posts = await db.hap_posts.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
     for p in posts:
-        likes = p.get("likes") or []
-        p["like_count"] = len(likes)
-        p["liked"] = employee_id in likes
+        reactions = p.get("reactions") or {}
+        p["reactions_count"] = {k: len(v) for k, v in reactions.items()}
+        p["my_reactions"] = [k for k, v in reactions.items() if employee_id in v]
+        p["reaction_total"] = sum(len(v) for v in reactions.values())
         p["topic_name"] = _topic_name(topics, p.get("topic_id"))
     return posts
 
 
-@api_router.post("/hapbilgi/posts/{pid}/like")
-async def hap_like(pid: str, payload: LikePayload):
+@api_router.post("/hapbilgi/posts/{pid}/react")
+async def hap_react(pid: str, payload: ReactPayload):
     post = await db.hap_posts.find_one({"id": pid}, {"_id": 0})
     if not post:
         raise HTTPException(404, "İçerik bulunamadı")
-    likes = post.get("likes") or []
-    if payload.employee_id in likes:
-        likes.remove(payload.employee_id)
+    reactions = post.get("reactions") or {}
+    arr = reactions.get(payload.emoji, [])
+    if payload.employee_id in arr:
+        arr.remove(payload.employee_id)
     else:
-        likes.append(payload.employee_id)
-    await db.hap_posts.update_one({"id": pid}, {"$set": {"likes": likes}})
-    return {"like_count": len(likes), "liked": payload.employee_id in likes}
+        arr.append(payload.employee_id)
+    reactions[payload.emoji] = arr
+    await db.hap_posts.update_one({"id": pid}, {"$set": {"reactions": reactions}})
+    return {"reactions_count": {k: len(v) for k, v in reactions.items()}, "my_reactions": [k for k, v in reactions.items() if payload.employee_id in v]}
 
 
 # ---- İndirim ----
@@ -2032,6 +2042,210 @@ async def canteen_feed(employee_id: str):
     return [c for c in items if employee_matches(emp, c.get("audience"))]
 
 
+# ----------------------------- Faz 3a: İSG-Ramak Kala + Toplantı Odası -----------------------------
+
+class IsgConfig(BaseModel):
+    anonymity_mode: Optional[str] = None      # always_anon | always_open | user_choice
+    status_flow_enabled: Optional[bool] = None
+    tags: Optional[List[str]] = None
+
+
+class RamakReportCreate(BaseModel):
+    reporter_id: Optional[str] = None
+    anonymous: bool = False
+    tag: Optional[str] = None
+    text: str
+    image: Optional[str] = None
+
+
+class RamakStatusUpdate(BaseModel):
+    status: str
+
+
+class RoomCreate(BaseModel):
+    name: str
+    location: str = ""
+    capacity: Optional[int] = None
+    equipment: str = ""
+    approve_mode: str = "auto"                 # auto | approval
+    audience: Dict[str, Any] = Field(default_factory=lambda: {"all": True})
+
+
+class RoomUpdate(BaseModel):
+    name: Optional[str] = None
+    location: Optional[str] = None
+    capacity: Optional[int] = None
+    equipment: Optional[str] = None
+    approve_mode: Optional[str] = None
+    audience: Optional[Dict[str, Any]] = None
+
+
+class ReservationCreate(BaseModel):
+    room_id: str
+    employee_id: str
+    date: str
+    start: str
+    end: str
+    title: str = ""
+
+
+async def seed_phase3a_cats():
+    for kind, name, icon in [("isg_ramak", "İSG — Ramak Kala", "AlertTriangle"), ("toplanti_odasi", "Toplantı Odası", "DoorOpen")]:
+        if await db.categories.count_documents({"category_type": kind}) == 0:
+            cnt = await db.categories.count_documents({})
+            await db.categories.insert_one({
+                "id": new_id(), "category_type": kind, "display_name": name, "icon": icon,
+                "icon_image": None, "status": "active", "audience": Audience().model_dump(),
+                "reporting_levels": ["sirket", "organizasyon"], "content_type": "eylem",
+                "pinnable": False, "order": cnt, "created_at": now_iso(),
+            })
+    if await db.isg_config.count_documents({}) == 0:
+        await db.isg_config.insert_one({"id": "isg_ramak", "anonymity_mode": "user_choice", "status_flow_enabled": True, "tags": ["Kayma-Düşme", "Ekipman", "Yangın Riski"]})
+
+
+# ---- İSG Ramak Kala ----
+@api_router.get("/isg-ramak/config")
+async def isg_get_config():
+    cfg = await db.isg_config.find_one({"id": "isg_ramak"}, {"_id": 0})
+    return cfg or {"id": "isg_ramak", "anonymity_mode": "user_choice", "status_flow_enabled": True, "tags": []}
+
+
+@api_router.put("/isg-ramak/config")
+async def isg_put_config(p: IsgConfig):
+    update = {k: v for k, v in p.model_dump(exclude_none=True).items()}
+    await db.isg_config.update_one({"id": "isg_ramak"}, {"$set": update}, upsert=True)
+    return await db.isg_config.find_one({"id": "isg_ramak"}, {"_id": 0})
+
+
+@api_router.post("/isg-ramak/reports")
+async def ramak_create(p: RamakReportCreate):
+    doc = {"id": new_id(), **p.model_dump(), "status": "yeni", "created_at": now_iso()}
+    await db.ramak_reports.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.get("/isg-ramak/reports")
+async def ramak_list():
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    items = await db.ramak_reports.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for r in items:
+        r["reporter_name"] = None if r.get("anonymous") else (emps.get(r.get("reporter_id"), {}).get("name"))
+        emp = emps.get(r.get("reporter_id"), {})
+        r["department"] = None if r.get("anonymous") else emp.get("department")
+        r["location"] = None if r.get("anonymous") else emp.get("location")
+    return items
+
+
+@api_router.put("/isg-ramak/reports/{rid}/status")
+async def ramak_status(rid: str, p: RamakStatusUpdate):
+    res = await db.ramak_reports.update_one({"id": rid}, {"$set": {"status": p.status}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Bildirim bulunamadı")
+    return await db.ramak_reports.find_one({"id": rid}, {"_id": 0})
+
+
+@api_router.get("/isg-ramak/my")
+async def ramak_my(employee_id: str):
+    return await db.ramak_reports.find({"reporter_id": employee_id, "anonymous": False}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+
+
+# ---- Toplantı Odası ----
+@api_router.get("/rooms")
+async def rooms_list():
+    return await db.rooms.find({}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+
+
+@api_router.post("/rooms")
+async def room_create(p: RoomCreate):
+    doc = {"id": new_id(), **p.model_dump(), "created_at": now_iso()}
+    await db.rooms.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.put("/rooms/{rid}")
+async def room_update(rid: str, p: RoomUpdate):
+    update = {k: v for k, v in p.model_dump(exclude_none=True).items()}
+    res = await db.rooms.update_one({"id": rid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Oda bulunamadı")
+    return await db.rooms.find_one({"id": rid}, {"_id": 0})
+
+
+@api_router.delete("/rooms/{rid}")
+async def room_delete(rid: str):
+    await db.rooms.delete_one({"id": rid})
+    await db.reservations.delete_many({"room_id": rid})
+    return {"ok": True}
+
+
+@api_router.get("/rooms/feed")
+async def rooms_feed(employee_id: str):
+    emp = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not emp:
+        raise HTTPException(404, "Çalışan bulunamadı")
+    rooms = await db.rooms.find({}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+    return [r for r in rooms if employee_matches(emp, r.get("audience"))]
+
+
+@api_router.get("/rooms/report")
+async def rooms_report():
+    rooms = await db.rooms.find({}, {"_id": 0}).to_list(1000)
+    rows = []
+    for r in rooms:
+        resv = await db.reservations.find({"room_id": r["id"], "status": {"$ne": "cancelled"}}, {"_id": 0}).to_list(10000)
+        rows.append({"id": r["id"], "name": r["name"], "reservations": len(resv)})
+    return {"rooms": rows}
+
+
+def _overlap(a_start, a_end, b_start, b_end):
+    return a_start < b_end and a_end > b_start
+
+
+@api_router.post("/reservations")
+async def reservation_create(p: ReservationCreate):
+    room = await db.rooms.find_one({"id": p.room_id}, {"_id": 0})
+    if not room:
+        raise HTTPException(404, "Oda bulunamadı")
+    same = await db.reservations.find({"room_id": p.room_id, "date": p.date, "status": {"$ne": "cancelled"}}, {"_id": 0}).to_list(10000)
+    for e in same:
+        if _overlap(p.start, p.end, e["start"], e["end"]):
+            raise HTTPException(400, "Bu oda seçilen saat aralığında dolu")
+    status = "confirmed" if room.get("approve_mode", "auto") == "auto" else "pending"
+    doc = {"id": new_id(), **p.model_dump(), "status": status, "created_at": now_iso()}
+    await db.reservations.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.get("/reservations")
+async def reservation_list(room_id: Optional[str] = None, employee_id: Optional[str] = None, date: Optional[str] = None):
+    q = {}
+    if room_id:
+        q["room_id"] = room_id
+    if employee_id:
+        q["employee_id"] = employee_id
+    if date:
+        q["date"] = date
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    rooms = {r["id"]: r for r in await db.rooms.find({}, {"_id": 0}).to_list(1000)}
+    items = await db.reservations.find(q, {"_id": 0}).sort("date", 1).to_list(10000)
+    for r in items:
+        r["employee_name"] = emps.get(r.get("employee_id"), {}).get("name")
+        r["room_name"] = rooms.get(r.get("room_id"), {}).get("name")
+    return items
+
+
+@api_router.post("/reservations/{resid}/cancel")
+async def reservation_cancel(resid: str):
+    await db.reservations.update_one({"id": resid}, {"$set": {"status": "cancelled"}})
+    return {"ok": True}
+
+
+@api_router.put("/reservations/{resid}/status")
+async def reservation_status(resid: str, p: RamakStatusUpdate):
+    await db.reservations.update_one({"id": resid}, {"$set": {"status": p.status}})
+    return await db.reservations.find_one({"id": resid}, {"_id": 0})
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -2058,6 +2272,7 @@ async def on_startup():
     await seed_audiences_if_empty()
     await seed_notification_cats()
     await seed_phase2_cats()
+    await seed_phase3a_cats()
 
 
 @app.on_event("shutdown")
