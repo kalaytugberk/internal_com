@@ -11,9 +11,35 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Layers } from "lucide-react";
 import { toast } from "sonner";
+
+// Sabit 20 kategori kataloğu — admin listeden seçer, yeni ad giremez
+const CATEGORY_MASTER = [
+  { type: "pulse", label: "Pulse Anketi", icon: "Activity" },
+  { type: "gunluk_mod", label: "Çalışan Hisleri (Günlük Mod)", icon: "Smile" },
+  { type: "ilan", label: "İlanlar", icon: "Tag" },
+  { type: "avatar", label: "Avatar Seçimi", icon: "Sparkles" },
+  { type: "servis", label: "Servis Güzergahı", icon: "Bus" },
+  { type: "anlik_bildirim", label: "Anlık Bildirim", icon: "Bell" },
+  { type: "hap_bilgi", label: "Hap Bilgi", icon: "Lightbulb" },
+  { type: "duyuru", label: "Duyurular", icon: "Megaphone" },
+  { type: "etkinlik", label: "Etkinlik", icon: "Calendar" },
+  { type: "isg_acil", label: "İSG — Acil Durum", icon: "ShieldAlert" },
+  { type: "isg_ramak", label: "İSG — Ramak Kala", icon: "AlertTriangle" },
+  { type: "kudos", label: "Kudos", icon: "Award" },
+  { type: "rozet", label: "Rozet / Oyunlaştırma", icon: "Trophy" },
+  { type: "indirim", label: "İndirim & Ayrıcalıklar", icon: "Percent" },
+  { type: "toplanti_odasi", label: "Toplantı Odası Rezervasyonu", icon: "DoorOpen" },
+  { type: "sirket_enleri", label: "Şirketin Enleri (Ayın Çalışanı)", icon: "Star" },
+  { type: "oyun", label: "Oyun (Bildim Aldım)", icon: "Gamepad2" },
+  { type: "kutlama", label: "Kutlama (Doğum Günü / Kıdem / Yeni İşe Başlayan)", icon: "PartyPopper" },
+  { type: "topluluk", label: "Topluluk", icon: "Users" },
+  { type: "yemekhane", label: "Yemekhane Listesi", icon: "Utensils" },
+];
+const MASTER_BY_TYPE = Object.fromEntries(CATEGORY_MASTER.map((c) => [c.type, c]));
 
 // Pastel katalog — kartlar sırayla bu paletten renk alır
 const PASTELS = [
@@ -49,12 +75,12 @@ const FUTURE_CATALOG = [
 ];
 
 const blankCategory = () => ({
-  category_type: "duyuru", display_name: "", icon: "Megaphone", icon_image: null,
+  category_type: "", display_name: "", icon: "Megaphone", icon_image: null,
   status: "active", audience: emptyAudience(), reporting_levels: ["kisi"],
   content_type: "pasif", pinnable: true,
 });
 
-const CategoryDialog = ({ open, onOpenChange, initial, onSave }) => {
+const CategoryDialog = ({ open, onOpenChange, initial, onSave, existingTypes = [] }) => {
   const [form, setForm] = useState(initial);
   useEffect(() => setForm(initial), [initial, open]);
   if (!form) return null;
@@ -78,9 +104,27 @@ const CategoryDialog = ({ open, onOpenChange, initial, onSave }) => {
               <IconPicker value={form.icon} onChange={(v) => setForm({ ...form, icon: v })} testPrefix="cat-icon" />
             </div>
             <div className="flex-1">
-              <Label htmlFor="cat-name" className="mb-1.5 block">Görünen Ad</Label>
-              <Input id="cat-name" data-testid="cat-name-input" value={form.display_name}
-                onChange={(e) => setForm({ ...form, display_name: e.target.value })} placeholder="örn. Şirket Haberleri" />
+              <Label className="mb-1.5 block">Kategori</Label>
+              <Select
+                value={form.category_type || ""}
+                disabled={!!form.id}
+                onValueChange={(v) => {
+                  const m = MASTER_BY_TYPE[v];
+                  setForm({ ...form, category_type: v, display_name: m?.label || v, icon: m?.icon || form.icon });
+                }}
+              >
+                <SelectTrigger data-testid="cat-type-select"><SelectValue placeholder="Listeden kategori seçin" /></SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {CATEGORY_MASTER.map((c) => {
+                    const taken = !form.id && existingTypes.includes(c.type);
+                    return (
+                      <SelectItem key={c.type} value={c.type} disabled={taken} data-testid={`cat-type-opt-${c.type}`}>
+                        {c.label}{taken ? " · ekli" : ""}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -136,7 +180,7 @@ const CategoryDialog = ({ open, onOpenChange, initial, onSave }) => {
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
           <Button data-testid="cat-save-btn" className="bg-blue-500 hover:bg-blue-600"
-            onClick={() => { if (!form.display_name.trim()) return toast.error("Görünen ad zorunlu"); onSave(form); }}>
+            onClick={() => { if (!form.category_type) return toast.error("Lütfen listeden bir kategori seçin"); onSave(form); }}>
             Kaydet
           </Button>
         </DialogFooter>
@@ -331,7 +375,7 @@ export const CategoriesManager = ({ onOpen }) => {
         })}
       </div>
 
-      <CategoryDialog open={dialogOpen} onOpenChange={setDialogOpen} initial={editing} onSave={save} />
+      <CategoryDialog open={dialogOpen} onOpenChange={setDialogOpen} initial={editing} onSave={save} existingTypes={categories.map((c) => c.category_type)} />
     </div>
   );
 };

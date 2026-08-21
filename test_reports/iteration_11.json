@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only test of the new 'Yeni Kategori' dialog change (free-text name input replaced with fixed 20-item combo). All 6 required scenarios PASS. The dialog no longer renders cat-name-input; cat-type-select is present with all 20 cat-type-opt-<type> items. Already-created categories (duyuru, pulse, etkinlik, gunluk_mod, ilan, avatar, servis) appear disabled with '· ekli' suffix. Selecting yemekhane auto-fills display_name='Yemekhane Listesi' and icon='Utensils'; POST /api/categories succeeds and the new card appears. Empty save shows the Turkish toast and does not create anything. In edit mode the select is disabled (data-disabled=''), icon picker still works, and Kaydet persists changes. Delete flow (cat-del-<id> + cat-del-confirm-<id>) works and was used for cleanup.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "CategoryDialog", "issues": ["Console warning: 'Select is changing from uncontrolled to controlled...' — caused by initializing form.category_type as empty string then passing value={form.category_type || undefined}. Cosmetic only, not user-visible. Consider always passing a defined value or using defaultValue."]},
+      {"screen": "Admin (dev overlay)", "issues": ["CRA dev overlay 'Uncaught runtime errors: ResizeObserver loop completed with undelivered notifications' occasionally appears after opening/closing Radix Select and blocks subsequent clicks. This is a benign browser warning that CRA promotes to an error overlay. Consider suppressing in webpack devServer.client.overlay or wrapping ResizeObserver. Not a functional bug."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "(Optional) Fix uncontrolled→controlled Select warning by defaulting form.category_type consistently.",
+    "(Optional) Suppress ResizeObserver overlay in dev to make automated testing more stable."
+  ],
+  "critical_code_review_comments": [
+    "CategoriesManager.js is 382 lines — acceptable; CATEGORY_MASTER + MASTER_BY_TYPE cleanly implemented.",
+    "Good: existingTypes correctly filters options when creating (form.id falsy) and whole select is disabled when editing.",
+    "Good: save() strips category_type on update so type can't be mutated server-side either.",
+    "Nit: Select's value={form.category_type || undefined} triggers React controlled/uncontrolled warning; prefer value={form.category_type ?? ''} paired with a proper empty-state or just always defined string."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100% (6/6 scenarios)"},
+  "seed_data_creation": "Created and deleted one 'yemekhane' category as part of the test flow; environment left clean (7 original categories).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Admin panel is at /admin but requires clicking the 'Admin Paneli' button first (or being on /admin with localStorage pln_role=admin then navigating). Then click data-testid=admin-tab-categories. The Radix Select uses data-disabled='' (empty string) rather than aria-disabled='true' when disabled — check with getAttribute('data-disabled') is not None. CRA runtime-error overlay for ResizeObserver may pop up during Select interactions; dismiss via JS or reload between test steps."
+}

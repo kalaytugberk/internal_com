@@ -47,6 +47,8 @@ Plena (İK/HR SaaS) için "İç İletişim" modülü. 20+ içerik kategorisini t
 
 - ✅ **Admin "Kategori Yönetimi" kart ızgarası** (2026-08-21): Admin paneli ilk sekmesi liste yerine mockup'a uygun pastel kart ızgarasına dönüştürüldü. 7 aktif kategori kartı (pastel katalogdan döngüsel renk) + 8 "Yakında" önizleme kartı (İSG, Anlık bildirim, Hap bilgi, Kudos, Rozet/oyunlaştırma, İndirim & ayrıcalıklar, Toplantı odası, Şirketin enleri). Karta tıklayınca ilgili yönetim sekmesi açılır (duyuru→announcements, pulse→pulse, etkinlik→events, gunluk_mod→mood, ilan→listings, avatar→avatar, servis→routes); "Yakında" kartına tıklayınca bilgi toast'ı, yönlendirme yok. Kart üstünde hover ikonları: tanım düzenle, alt kategoriler, sil (AlertDialog). Sürükle-bırak sıralama korunur. Testing (iteration_10): frontend 100%.
 
+- ✅ **Kategori seçimi sabit 20'lik combo** (2026-08-21): "Yeni Kategori" penceresinde serbest ad girişi kaldırıldı; admin sabit 20 kategori kataloğundan (Pulse, Günlük Mod, İlanlar, Avatar, Servis, Anlık Bildirim, Hap Bilgi, Duyurular, Etkinlik, İSG-Acil, İSG-Ramak Kala, Kudos, Rozet/Oyunlaştırma, İndirim & Ayrıcalıklar, Toplantı Odası, Şirketin Enleri, Oyun, Kutlama, Topluluk, Yemekhane) combo ile seçer — kendi yeni ad ekleyemez. Seçim otomatik olarak görünen adı + varsayılan ikonu doldurur; ikon yine IconPicker ile değiştirilebilir. Zaten eklenmiş tipler combo'da "· ekli" ile pasiftir (tekrar önlenir). Düzenlemede combo kilitli (tip değişmez). Testing (iteration_11): frontend 100% (6/6).
+
 ## Backlog / Remaining
 - P1: Diğer kategori tipleri (Etkinlik, Kudos, Oyunlaştırma, İlan...)
 - P1: Duyuru için raporlama ekranları
