@@ -33,7 +33,8 @@ export const EventReport = ({ eventId, onBack }) => {
         <Stat label="Katılım Oranı" value={`%${data.response_rate}`} />
         <Stat label="Yanıtlayan" value={`${data.total_responded}/${data.target_count}`} />
         <Stat label="Katılıyor" value={data.counts.katiliyorum || 0} color="text-blue-600" />
-        <Stat label="Katılmıyor" value={data.counts.katilmiyorum || 0} color="text-rose-600" />
+        <Stat label="Fiili Katılım (QR)" value={data.checkin_count || 0} color="text-emerald-600" />
+        <Stat label="Servis Kullanan" value={data.service_count || 0} color="text-indigo-600" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">

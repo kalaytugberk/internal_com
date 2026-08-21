@@ -67,13 +67,14 @@ const CATALOG = {
   yemekhane: { tab: "yemekhane", desc: "Yemekhane menülerini gün bazında tanımla." },
   isg_ramak: { tab: "isgramak", desc: "Ramak kala bildirimleri ve durum takibi." },
   toplanti_odasi: { tab: "rooms", desc: "Toplantı odası tanımları ve rezervasyonlar." },
+  sirket_enleri: { tab: "enler", desc: "Ödül başlıkları ve kazanan galerisi." },
+  kutlama: { tab: "kutlama", desc: "Otomatik doğum günü/kıdem kutlamaları ve şablonlar." },
 };
 
 // Henüz yapılmamış kategoriler (yakında)
 const FUTURE_CATALOG = [
   { key: "kudos", label: "Kudos", desc: "Takdir ve teşekkür kuralları.", icon: "Award" },
   { key: "rozet", label: "Rozet / oyunlaştırma", desc: "Puan kaynakları ve rozet kriterleri.", icon: "Trophy" },
-  { key: "sirket_enleri", label: "Şirketin enleri", desc: "Ayın çalışanı ve ödül başlıkları.", icon: "Star" },
 ];
 
 const blankCategory = () => ({

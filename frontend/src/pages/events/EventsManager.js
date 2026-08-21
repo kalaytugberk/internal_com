@@ -16,7 +16,7 @@ import { toast } from "sonner";
 
 const blank = () => ({
   title: "", description: "", image: "", location: "", event_date: "",
-  audience: emptyAudience(), status: "yayinda", allow_maybe: true,
+  audience: emptyAudience(), status: "yayinda", allow_maybe: true, capacity: "", service_link: false,
 });
 
 const STATUS_META = {
@@ -44,7 +44,7 @@ export const EventsManager = () => {
 
   const save = async () => {
     if (!form.title.trim()) return toast.error("Başlık zorunlu");
-    const payload = { ...form, image: form.image || null, event_date: form.event_date || null };
+    const payload = { ...form, image: form.image || null, event_date: form.event_date || null, capacity: form.capacity ? parseInt(form.capacity, 10) : null };
     if (form.id) { const { id, category_id, created_at, updated_at, rsvp_counts, ...rest } = payload; await api.updateEvent(id, rest); }
     else await api.createEvent(payload);
     setOpen(false); load(); toast.success("Etkinlik kaydedildi");
@@ -146,6 +146,13 @@ export const EventsManager = () => {
                 <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3 mt-6">
                   <span className="text-sm font-medium text-slate-700">"Belki" seçeneği</span>
                   <Switch data-testid="event-allowmaybe" checked={form.allow_maybe} onCheckedChange={(c) => setForm({ ...form, allow_maybe: c })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label className="mb-1.5 block">Kontenjan (opsiyonel)</Label><Input type="number" data-testid="event-capacity" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} placeholder="boş = sınırsız" /></div>
+                <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3 mt-6">
+                  <span className="text-sm font-medium text-slate-700">Servis bağlantısı</span>
+                  <Switch data-testid="event-servicelink" checked={form.service_link} onCheckedChange={(c) => setForm({ ...form, service_link: c })} />
                 </div>
               </div>
               <div><Label className="mb-2 block">Hedef Kitle</Label><AudiencePicker value={form.audience} onChange={(a) => setForm({ ...form, audience: a })} testPrefix="event-seg" /></div>

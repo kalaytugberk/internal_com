@@ -1,0 +1,43 @@
+{
+  "summary": "Phase 3b (Şirketin Enleri + Kutlama + Event capacity/checkin/service) fully verified. Backend pytest 8/8 PASS in /app/backend/tests/test_phase3b.py: awards CRUD + winner enrichment (employee_name+award_name), vote upsert-per-voter with tally aggregating unique voters (switching nominee updates existing doc, not appends), celebration templates CRUD, /celebrations/feed returns list of {subtype in [dogum_gunu|kidem|yeni_baslayan], employee_name, label, detail}, employees seeded with birth_date+hire_date, event capacity guard (2nd katiliyorum -> 400 'Kontenjan dolu'), same employee can re-save own katiliyorum (self excluded via $ne), event_checkin idempotent (same emp check-in twice keeps count=1), missing event checkin -> 404, report returns checkin_count + service_count. FRONTEND: Admin /admin (localStorage pln_role=admin) — admin-tab-enler: created 'TEST_QA_UI_Award' via add-award-btn→award-name/award-method(Oylama)/award-save-btn → award-row appeared; award-winner-<id> Radix select 1st employee → winner-save-btn → winner card appeared in admin winners grid. admin-tab-kutlama: uploaded 1x1 PNG via #tpl-img with subtype=dogum_gunu → template card appeared (tpl-<id>). admin-tab-events: created 'TEST_QA_UI_CapEvent' with event-capacity=1 + event-servicelink switch ON. Employee (pln_role=employee, pln_emp=emp0) /ic-iletisim shows both 'Şirketin Enleri' + 'Kutlama' cards; /ic-iletisim/enler shows winners gallery (enler-winner-<id>) + 8 vote buttons for vote-award (vote-<aid>-<empId>) — clicked vote OK; /ic-iletisim/kutlama shows 2 celebration cards (Kıdem 'Mert Yılmaz 4. yıl' + Doğum Günü 'Can Öztürk 08.08'). Event detail /ic-iletisim/etkinlik/<id>: event-qr block visible with QR image, rsvp-katiliyorum → event-service block appeared with event-service-select showing 3 route options (default + 2 routes 'Kadıköy Hattı', 'Bağcılar Hattı') — selected route → route persisted; event-checkin-btn → event-checkin-done indicator appears. Employee1 attempt katiliyorum → 400 + toast 'Kontenjan dolu' visible in DOM. Admin event-report-<id>: shows 'Fiili Katılım (QR)=1' + 'Servis Kullanan=1' stat cards. Cleanup: TEST awards, templates and event deleted via API.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      { "screen": "Award Kazanan Belirle dialog", "issues": ["Select emits 'changing from uncontrolled to controlled' React warning because win.employee_id starts as '' then set to undefined then to id — initialise employee_id to '' consistently or use undefined throughout."] },
+      { "screen": "Dialogs (Yeni Ödül, Kazanan Belirle)", "issues": ["Radix DialogContent missing Description/aria-describedby — accessibility warning. Add DialogDescription element for both dialogs."] }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase3b.py",
+    "/app/test_reports/pytest/phase3b.xml"
+  ],
+  "action_items": [
+    "(Optional cosmetic) Add DialogDescription to Enler dialogs to silence Radix a11y warning.",
+    "(Optional cosmetic) Initialise win.employee_id to '' instead of undefined in Enler.js winner dialog Select to silence controlled/uncontrolled React warning."
+  ],
+  "critical_code_review_comments": [
+    "server.py award_vote uses upsert with $set nominee_id + $setOnInsert id — correctly makes each voter's vote unique (one voter -> one active vote). Verified via test_award_vote_tally: 2 voters, 1 switching → total=2 with 1 vote each for 2 nominees.",
+    "server.py rsvp_event capacity check uses employee_id: {$ne: payload.employee_id} — correctly allows the same employee to re-confirm katiliyorum when they're already counted. Nice edge-case handling.",
+    "server.py event_checkin uses upsert on (event_id, employee_id) — idempotent by design (verified count stays 1 on double check-in).",
+    "celebrations/feed only distinguishes years>=1 as kidem and years==0 as yeni_baslayan — if hire month equals current month but year is the same year, years==0 works; but for someone hired MID-current-month, that's fine. Consider showing 'Yeni İşe Başlayan' also outside their hire month? Current spec: only for current month → OK.",
+    "Enler.js uses winners w.id key — but if winner is deleted, avatar_url may be null; template rendered safely with fallback trophy icon. OK.",
+    "Enler EnlerPage vote buttons iterate emps.slice(0, 8) — hardcoded to first 8 employees; if org has >8 employees, others cannot be voted for. Consider showing all or making it configurable per-award (nominees list).",
+    "Enler backend: no endpoint to delete/undo a specific winner (only entire-award delete cascades). Minor: admin cannot correct a single mistaken winner without deleting the award. Consider DELETE /awards/{aid}/winner/{wid}.",
+    "Kutlama /celebrations/feed picks a RANDOM template per card each request — every page refresh shuffles cards; may be jarring UX. Consider deterministic (seed by employee_id) for stable UX.",
+    "Empty-string img src on winner/celebration cards when avatar_url is '' (not null) triggers ERR_INVALID_URL in browser console. Enler.js: use `w.avatar_url ? <img> : ...` (already checks truthy — OK). Kutlama.js line 77: `{c.avatar_url && <img>}` also truthy-checks. So the ERR_INVALID_URL likely originates from Kutlama's `c.image` when tpl_for returns null — line 75 uses ternary but null passes through to fallback; investigate further if user reports it.",
+    "server.py award_del also cascades to winners+votes — good. But no similar cascade for celebration-templates → if template deleted while /celebrations/feed is being generated, race is harmless (returns list snapshot).",
+    "Radix `<select>` in Events.js line 115 uses native HTML select rather than Radix Select — inconsistent styling with rest of app but a11y-solid and mobile-native. Design choice, acceptable."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase3b.py (new)"
+  ],
+  "success_rate": { "backend": "100% (8/8)", "frontend": "100% (all admin + employee Phase-3b flows: award create+winner+vote, template upload, celebration cards, event capacity 400 toast, service_link select with routes, QR checkin, event report stats)" },
+  "test_credentials": "No auth. Admin via localStorage.pln_role='admin' + /admin. Employee via pln_role='employee' + pln_emp=<employee id from GET /api/employees>.",
+  "seed_data_creation": "During test: 1 award 'TEST_QA_UI_Award' + 1 winner + votes, 1 celebration template (dogum_gunu, tiny PNG), 1 event 'TEST_QA_UI_CapEvent' with RSVPs+checkin+service. All cleaned up via API DELETE endpoints at end. Note: 'TEST_QA_Award'/'TEST_QA_VoteAward' from pytest are also cleaned up in-test. Employees birth_date+hire_date remain (phase3b seed migration, one-time).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 3b tests at /app/backend/tests/test_phase3b.py + phase3b.xml. Radix Select needs ~300ms wait. Native HTML <select> for service (event-service-select) — use page.select_option() not Radix flow. Toast library is sonner — text visible in document.body.innerText or via [data-sonner-toast]. Event checkin is idempotent — repeated clicks won't inflate count. Capacity guard uses $ne on employee_id so same emp can re-save. celebrations/feed randomises template image per request — screenshots may differ; assert on subtype/employee_name/label/detail structure, not the image url. Emergent tooling wraps <option> children in <span> causing an HTML validation console warning in Events.js service select — instrumentation issue, not app bug.",
+  "rca of the issue": "N/A — no bugs found. All Phase 3b spec requirements met per review_request."
+}

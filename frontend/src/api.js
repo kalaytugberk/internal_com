@@ -148,4 +148,17 @@ export const api = {
   reservations: (params) => http.get("/reservations", { params }).then((r) => r.data),
   cancelReservation: (id) => http.post(`/reservations/${id}/cancel`).then((r) => r.data),
   reservationStatus: (id, status) => http.put(`/reservations/${id}/status`, { status }).then((r) => r.data),
+
+  checkinEvent: (id, employeeId) => http.post(`/events/${id}/checkin`, { employee_id: employeeId }).then((r) => r.data),
+  awards: () => http.get("/awards").then((r) => r.data),
+  createAward: (d) => http.post("/awards", d).then((r) => r.data),
+  deleteAward: (id) => http.delete(`/awards/${id}`).then((r) => r.data),
+  setWinner: (id, d) => http.post(`/awards/${id}/winner`, d).then((r) => r.data),
+  awardWinners: () => http.get("/awards/winners").then((r) => r.data),
+  voteAward: (id, d) => http.post(`/awards/${id}/vote`, d).then((r) => r.data),
+  awardVotes: (id) => http.get(`/awards/${id}/votes`).then((r) => r.data),
+  celTemplates: () => http.get("/celebration-templates").then((r) => r.data),
+  createTemplate: (d) => http.post("/celebration-templates", d).then((r) => r.data),
+  deleteTemplate: (id) => http.delete(`/celebration-templates/${id}`).then((r) => r.data),
+  celebrationsFeed: () => http.get("/celebrations/feed").then((r) => r.data),
 };

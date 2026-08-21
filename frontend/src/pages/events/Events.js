@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "@/api";
 import { useApp } from "@/context/AppContext";
-import { ChevronLeft, MapPin, CalendarClock, Users, Check, X, HelpCircle, Pin } from "lucide-react";
+import { ChevronLeft, MapPin, CalendarClock, Users, Check, X, HelpCircle, Pin, QrCode, Bus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -54,15 +54,20 @@ export const EventDetail = () => {
   const navigate = useNavigate();
   const { currentEmployeeId } = useApp();
   const [ev, setEv] = useState(null);
+  const [routes, setRoutes] = useState([]);
 
   const load = () => api.event(id, currentEmployeeId).then(setEv);
   useEffect(() => { if (currentEmployeeId) load(); }, [id, currentEmployeeId]);
+  useEffect(() => { if (ev?.service_link && currentEmployeeId) api.routesFeed(currentEmployeeId).then(setRoutes); }, [ev?.service_link, currentEmployeeId]);
 
-  const rsvp = async (response) => {
-    const res = await api.rsvpEvent(id, { employee_id: currentEmployeeId, response });
-    setEv((e) => ({ ...e, my_rsvp: res.my_rsvp, rsvp_counts: res.rsvp_counts }));
-    toast.success("Yanıtın kaydedildi");
+  const rsvp = async (response, extra = {}) => {
+    try {
+      const res = await api.rsvpEvent(id, { employee_id: currentEmployeeId, response, ...extra });
+      setEv((e) => ({ ...e, my_rsvp: res.my_rsvp, rsvp_counts: res.rsvp_counts, my_service: res.my_service }));
+      toast.success("Yanıtın kaydedildi");
+    } catch (e) { toast.error(e?.response?.data?.detail || "Kaydedilemedi"); }
   };
+  const checkin = async () => { const r = await api.checkinEvent(id, currentEmployeeId); setEv((e) => ({ ...e, my_checkin: true, checkin_count: r.checkin_count })); toast.success("Katılımın işaretlendi"); };
 
   if (!ev) return <div className="py-16 text-center text-slate-400">Yükleniyor...</div>;
 
@@ -100,9 +105,33 @@ export const EventDetail = () => {
           })}
         </div>
         <div className="mt-4 flex gap-4 text-xs text-slate-400">
-          <span>{ev.rsvp_counts?.katiliyorum || 0} katılıyor</span>
+          <span>{ev.rsvp_counts?.katiliyorum || 0} katılıyor{ev.capacity ? ` / ${ev.capacity} kontenjan` : ""}</span>
           <span>{ev.rsvp_counts?.belki || 0} belki</span>
           <span>{ev.rsvp_counts?.katilmiyorum || 0} katılmıyor</span>
+        </div>
+        {ev.service_link && ev.my_rsvp === "katiliyorum" && (
+          <div className="mt-4 border-t border-slate-100 pt-4" data-testid="event-service">
+            <p className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5"><Bus className="w-4 h-4" /> Servis kullanacağım</p>
+            <select data-testid="event-service-select" value={ev.my_service || ""} onChange={(e) => rsvp("katiliyorum", { use_service: !!e.target.value, route_id: e.target.value || null })}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">
+              <option value="">Servis kullanmayacağım</option>
+              {routes.map((r) => <option key={r.id} value={r.id}>{r.name} ({r.city})</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-slate-100 bg-white shadow-sm p-5" data-testid="event-qr">
+        <p className="font-heading font-semibold text-slate-700 mb-3 flex items-center gap-1.5"><QrCode className="w-4 h-4" /> Etkinlik Alanı Check-in</p>
+        <div className="flex items-center gap-5">
+          <img src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=EVENT-${ev.id}`} alt="QR" className="w-28 h-28 rounded-lg border border-slate-100" />
+          <div className="flex-1">
+            <p className="text-sm text-slate-500 mb-3">Etkinlik alanında bu QR'ı okuttuktan sonra fiili katılımını işaretle.</p>
+            {ev.my_checkin
+              ? <span className="inline-flex items-center gap-1.5 text-sm text-emerald-600" data-testid="event-checkin-done"><Check className="w-4 h-4" /> Katılımın işaretlendi</span>
+              : <Button data-testid="event-checkin-btn" onClick={checkin} className="bg-emerald-500 hover:bg-emerald-600">Alandayım</Button>}
+            <p className="text-xs text-slate-400 mt-2">{ev.checkin_count || 0} kişi check-in yaptı</p>
+          </div>
         </div>
       </div>
     </div>

@@ -147,6 +147,12 @@ class PulseResponseCreate(BaseModel):
 class RSVPCreate(BaseModel):
     employee_id: str
     response: str
+    use_service: bool = False
+    route_id: Optional[str] = None
+
+
+class EventCheckin(BaseModel):
+    employee_id: str
 
 
 class EventCreate(BaseModel):
@@ -158,6 +164,8 @@ class EventCreate(BaseModel):
     audience: Audience = Field(default_factory=Audience)
     status: str = "yayinda"        # taslak | yayinda | pasif
     allow_maybe: bool = True
+    capacity: Optional[int] = None
+    service_link: bool = False
 
 
 class EventUpdate(BaseModel):
@@ -169,6 +177,8 @@ class EventUpdate(BaseModel):
     audience: Optional[Audience] = None
     status: Optional[str] = None
     allow_maybe: Optional[bool] = None
+    capacity: Optional[int] = None
+    service_link: Optional[bool] = None
 
 
 # ----------------------------- Static / Seed data -----------------------------
@@ -836,6 +846,10 @@ async def get_event(eid: str, employee_id: Optional[str] = None):
     if employee_id:
         mine = next((r for r in rsvps if r["employee_id"] == employee_id), None)
         doc["my_rsvp"] = mine["response"] if mine else None
+        doc["my_service"] = mine.get("route_id") if mine else None
+        ci = await db.event_checkins.find_one({"event_id": eid, "employee_id": employee_id}, {"_id": 0})
+        doc["my_checkin"] = bool(ci)
+    doc["checkin_count"] = await db.event_checkins.count_documents({"event_id": eid})
     return doc
 
 
@@ -879,6 +893,8 @@ async def event_report(eid: str):
         "event": ev, "counts": counts, "total_responded": total_responded,
         "target_count": len(target),
         "response_rate": round(100 * total_responded / len(target)) if target else 0,
+        "checkin_count": await db.event_checkins.count_documents({"event_id": eid}),
+        "service_count": await db.rsvps.count_documents({"event_id": eid, "use_service": True}),
         "departments": list(dept.values()),
     }
 
@@ -888,14 +904,29 @@ async def rsvp_event(eid: str, payload: RSVPCreate):
     ev = await db.events.find_one({"id": eid}, {"_id": 0})
     if not ev:
         raise HTTPException(404, "Etkinlik bulunamadı")
+    if payload.response == "katiliyorum" and ev.get("capacity"):
+        others = await db.rsvps.count_documents({"event_id": eid, "response": "katiliyorum", "employee_id": {"$ne": payload.employee_id}})
+        if others >= ev["capacity"]:
+            raise HTTPException(400, "Kontenjan dolu")
     await db.rsvps.update_one(
         {"event_id": eid, "employee_id": payload.employee_id},
-        {"$set": {"response": payload.response, "updated_at": now_iso()},
+        {"$set": {"response": payload.response, "use_service": payload.use_service, "route_id": payload.route_id, "updated_at": now_iso()},
          "$setOnInsert": {"id": new_id()}},
         upsert=True,
     )
     rsvps = await db.rsvps.find({"event_id": eid}, {"_id": 0}).to_list(10000)
-    return {"ok": True, "rsvp_counts": _rsvp_counts(rsvps), "my_rsvp": payload.response}
+    return {"ok": True, "rsvp_counts": _rsvp_counts(rsvps), "my_rsvp": payload.response, "my_service": payload.route_id}
+
+
+@api_router.post("/events/{eid}/checkin")
+async def event_checkin(eid: str, payload: EventCheckin):
+    ev = await db.events.find_one({"id": eid}, {"_id": 0})
+    if not ev:
+        raise HTTPException(404, "Etkinlik bulunamadı")
+    await db.event_checkins.update_one(
+        {"event_id": eid, "employee_id": payload.employee_id},
+        {"$set": {"at": now_iso()}, "$setOnInsert": {"id": new_id()}}, upsert=True)
+    return {"ok": True, "checkin_count": await db.event_checkins.count_documents({"event_id": eid})}
 
 
 class MoodConfigUpdate(BaseModel):
@@ -2246,6 +2277,153 @@ async def reservation_status(resid: str, p: RamakStatusUpdate):
     return await db.reservations.find_one({"id": resid}, {"_id": 0})
 
 
+# ----------------------------- Faz 3b: Şirketin Enleri + Kutlama -----------------------------
+
+class AwardCreate(BaseModel):
+    name: str
+    method: str = "manual"     # auto | manual | vote | hybrid
+    period: str = "aylik"      # haftalik | aylik | ceyreklik
+
+
+class WinnerCreate(BaseModel):
+    employee_id: str
+    period_label: str = ""
+
+
+class VoteCreate(BaseModel):
+    voter_id: str
+    nominee_id: str
+
+
+class TemplateCreate(BaseModel):
+    subtype: str               # dogum_gunu | kidem | yeni_baslayan
+    image: str
+
+
+async def seed_phase3b_cats():
+    for kind, name, icon in [("sirket_enleri", "Şirketin Enleri", "Star"), ("kutlama", "Kutlama", "PartyPopper")]:
+        if await db.categories.count_documents({"category_type": kind}) == 0:
+            cnt = await db.categories.count_documents({})
+            await db.categories.insert_one({
+                "id": new_id(), "category_type": kind, "display_name": name, "icon": icon,
+                "icon_image": None, "status": "active", "audience": Audience().model_dump(),
+                "reporting_levels": ["sirket"], "content_type": "pasif", "pinnable": False,
+                "order": cnt, "created_at": now_iso(),
+            })
+    # mock doğum/işe giriş tarihleri
+    emps = await db.employees.find({"birth_date": {"$exists": False}}, {"_id": 0}).to_list(1000)
+    import random
+    for i, e in enumerate(emps):
+        bd = f"1990-{(i % 12) + 1:02d}-{(i % 27) + 1:02d}"
+        hy = 2018 + (i % 7)
+        hd = f"{hy}-{((i + 3) % 12) + 1:02d}-{((i + 5) % 27) + 1:02d}"
+        await db.employees.update_one({"id": e["id"]}, {"$set": {"birth_date": bd, "hire_date": hd}})
+
+
+# ---- Şirketin Enleri ----
+@api_router.get("/awards")
+async def awards_list():
+    return await db.awards.find({}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+
+
+@api_router.post("/awards")
+async def award_create(p: AwardCreate):
+    doc = {"id": new_id(), **p.model_dump(), "created_at": now_iso()}
+    await db.awards.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.delete("/awards/{aid}")
+async def award_del(aid: str):
+    await db.awards.delete_one({"id": aid})
+    await db.award_winners.delete_many({"award_id": aid})
+    await db.award_votes.delete_many({"award_id": aid})
+    return {"ok": True}
+
+
+@api_router.post("/awards/{aid}/winner")
+async def award_winner(aid: str, p: WinnerCreate):
+    doc = {"id": new_id(), "award_id": aid, **p.model_dump(), "created_at": now_iso()}
+    await db.award_winners.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.get("/awards/winners")
+async def award_winners_list():
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    awards = {a["id"]: a for a in await db.awards.find({}, {"_id": 0}).to_list(1000)}
+    rows = await db.award_winners.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for w in rows:
+        emp = emps.get(w["employee_id"], {})
+        w["employee_name"] = emp.get("name")
+        w["avatar_url"] = emp.get("avatar_url")
+        w["award_name"] = awards.get(w["award_id"], {}).get("name")
+    return rows
+
+
+@api_router.post("/awards/{aid}/vote")
+async def award_vote(aid: str, p: VoteCreate):
+    await db.award_votes.update_one({"award_id": aid, "voter_id": p.voter_id}, {"$set": {"nominee_id": p.nominee_id}, "$setOnInsert": {"id": new_id()}}, upsert=True)
+    return {"ok": True}
+
+
+@api_router.get("/awards/{aid}/votes")
+async def award_votes(aid: str):
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    votes = await db.award_votes.find({"award_id": aid}, {"_id": 0}).to_list(10000)
+    tally = {}
+    for v in votes:
+        tally.setdefault(v["nominee_id"], 0)
+        tally[v["nominee_id"]] += 1
+    return {"total": len(votes), "tally": [{"employee_id": k, "name": emps.get(k, {}).get("name"), "votes": n} for k, n in sorted(tally.items(), key=lambda x: -x[1])]}
+
+
+# ---- Kutlama ----
+@api_router.get("/celebration-templates")
+async def tpl_list():
+    return await db.cel_templates.find({}, {"_id": 0}).to_list(1000)
+
+
+@api_router.post("/celebration-templates")
+async def tpl_create(p: TemplateCreate):
+    doc = {"id": new_id(), **p.model_dump(), "created_at": now_iso()}
+    await db.cel_templates.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.delete("/celebration-templates/{tid}")
+async def tpl_del(tid: str):
+    await db.cel_templates.delete_one({"id": tid})
+    return {"ok": True}
+
+
+@api_router.get("/celebrations/feed")
+async def celebrations_feed():
+    import random
+    from datetime import date
+    today = date.today()
+    emps = await db.employees.find({}, {"_id": 0}).to_list(1000)
+    tpls = await db.cel_templates.find({}, {"_id": 0}).to_list(1000)
+
+    def tpl_for(sub):
+        opts = [t["image"] for t in tpls if t["subtype"] == sub]
+        return random.choice(opts) if opts else None
+
+    out = []
+    for e in emps:
+        bd = e.get("birth_date")
+        hd = e.get("hire_date")
+        if bd and bd[5:7] == f"{today.month:02d}":
+            out.append({"subtype": "dogum_gunu", "label": "Doğum Günü", "employee_name": e["name"], "avatar_url": e.get("avatar_url"), "detail": f"{bd[8:10]}.{bd[5:7]}", "image": tpl_for("dogum_gunu")})
+        if hd and hd[5:7] == f"{today.month:02d}":
+            years = today.year - int(hd[0:4])
+            if years >= 1:
+                out.append({"subtype": "kidem", "label": "Kıdem Kutlaması", "employee_name": e["name"], "avatar_url": e.get("avatar_url"), "detail": f"{years}. yıl", "image": tpl_for("kidem")})
+            elif years == 0:
+                out.append({"subtype": "yeni_baslayan", "label": "Yeni İşe Başlayan", "employee_name": e["name"], "avatar_url": e.get("avatar_url"), "detail": "Aramıza katıldı", "image": tpl_for("yeni_baslayan")})
+    return out
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -2273,6 +2451,7 @@ async def on_startup():
     await seed_notification_cats()
     await seed_phase2_cats()
     await seed_phase3a_cats()
+    await seed_phase3b_cats()
 
 
 @app.on_event("shutdown")
