@@ -19,7 +19,8 @@ import { KutlamaManager } from "@/pages/kutlama/Kutlama";
 import { KudosManager } from "@/pages/gamification/Kudos";
 import { RozetManager } from "@/pages/gamification/Gamification";
 import { GamesManager } from "@/pages/gamification/Games";
-import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile, Tag, Sparkles, Bus, Bell, ShieldAlert, Lightbulb, Percent, Utensils, AlertTriangle, DoorOpen, Star, PartyPopper, Award, Trophy, Gamepad2 } from "lucide-react";
+import { CommunitiesManager } from "@/pages/community/Community";
+import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile, Tag, Sparkles, Bus, Bell, ShieldAlert, Lightbulb, Percent, Utensils, AlertTriangle, DoorOpen, Star, PartyPopper, Award, Trophy, Gamepad2, Users } from "lucide-react";
 
 const TABS = [
   { key: "categories", label: "Kategori Yönetimi", icon: Layers },
@@ -42,6 +43,7 @@ const TABS = [
   { key: "kudos", label: "Kudos", icon: Award },
   { key: "rozet", label: "Rozet / Oyunlaştırma", icon: Trophy },
   { key: "oyun", label: "Oyun", icon: Gamepad2 },
+  { key: "topluluk", label: "Topluluk", icon: Users },
 ];
 
 export const AdminPanel = () => {
@@ -91,6 +93,7 @@ export const AdminPanel = () => {
       {tab === "kudos" && <KudosManager />}
       {tab === "rozet" && <RozetManager />}
       {tab === "oyun" && <GamesManager />}
+      {tab === "topluluk" && <CommunitiesManager />}
     </div>
   );
 };

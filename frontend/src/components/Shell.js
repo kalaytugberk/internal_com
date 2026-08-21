@@ -5,6 +5,7 @@ import { useApp } from "@/context/AppContext";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuRadioGroup, DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
+import { KudosBell } from "@/components/KudosNotifications";
 
 const TABS = [
   { to: "/", label: "Ana Sayfa", icon: Home, end: true },
@@ -130,10 +131,7 @@ export const Shell = ({ children }) => {
             <button data-testid="settings-btn" aria-label="Ayarlar" className="p-2 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
               <Settings className="w-5 h-5" />
             </button>
-            <button data-testid="notifications-btn" aria-label="Bildirimler" className="relative p-2 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold grid place-items-center">3</span>
-            </button>
+            <KudosBell />
             <div className="flex items-center gap-2 pl-1">
               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 text-xs font-bold grid place-items-center overflow-hidden">
                 {role === "employee" && currentEmployee?.avatar

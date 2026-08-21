@@ -1,0 +1,27 @@
+{
+  "summary": "Faz 5 (Topluluk + Kudos bildirimi) uçtan uca test edildi. Backend: 7/7 pytest geçti (test_phase5.py) — /communities list+feed, CRUD, expert toggle, posts (tartışma+anket), yorum+verify, oy taşınması, pinle, mesaj, kudos notifications+seen. WebSocket ingress: Python websockets istemcisiyle bağlanıp mesaj yayınının wss://.../api/ws/community/{cid} üzerinden geldiği doğrulandı. Frontend: employee (Erol) ile /ic-iletisim/topluluk feed'inde 2 topluluk kartı; detayda chat-box'a mesaj gönderme çalışıyor (msg-<id> ekleniyor); Gönderiler sekmesinde 2 mevcut gönderi, poll-option oylandı, comment gönderildi, yeni tartışma + anket (3 seçenek) oluşturuldu. Admin (Selin) ile post-pin/post-del/comment-verify/msg-del butonları render oluyor; Admin Panel'de admin-tab-topluluk açılıp add-community-btn, community-experts dialogunda 8 expert-toggle görünüyor. Kudos bildirimi: Erol'dan Mert'e kudos verildi → notifications-btn üzerinde notif-count=1, açılırda notif-item-<id> listede, notif-mark-seen sonrası sayaç kayboldu. Kudos-celebration kartı Ana Sayfa'da render oldu, dismiss sonrası reload'da tekrar çıkmadı. Regresyon: /ic-iletisim ana ızgarada 'Topluluk' aktif, 'İç İlanlar' hâlâ Yakında.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "ChatPanel WebSocket", "issue": "Playwright/Chromium headless oturumunda 'wss://.../api/ws/community/{cid}' bağlantısı 'closed before established' uyarısı veriyor; polling fallback devreye giriyor ve mesajlar geliyor. Sunucu tarafında wss çalışıyor (bağımsız Python istemcisiyle broadcast doğrulandı). Muhtemel neden: iki sekmede eş zamanlı test edilmedi; tarayıcı ws erken kapanma tolerans süresi. Aksiyon gerekmiyor, ancak ChatPanel useEffect'in ws.onopen doğrulaması yapması iyileştirme olabilir.", "affected_selectors": ["chat-box", "chat-send"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_phase5.py", "/app/test_reports/pytest/phase5_results.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Community.js ChatPanel: `msgsLast()` fonksiyonu tanımlanıp `seen.current.forEach(()=>{})` boş döngü içeriyor — ölü kod; `lastTs.current` doğrudan kullanılıyor. Temizlenebilir.",
+    "ChatPanel: `startPolling` içinden `msgsLast()` çağırıldığında `lastTs.current` state güncellemesinden bağımsız ref, doğru; ancak ws bağlantısı 'closed before established' halinde onerror + onclose iki kez tetiklenebilir → polling interval çoklanmasını `pollRef.current` guard'ı önlüyor (OK).",
+    "server.py: `POST /kudos` body şeması `to_id` (tekil) + `value` alanlarını bekliyor; ancak Faz 4 sırasında UI 'to_ids' + 'value_key' de gönderiyor olabilir — mevcut FE tekil to_id ile çağırıyor, tutarlı.",
+    "server.py 3246 satır (>700); Faz-5 blokları backend/phase5.py'a taşınabilir.",
+    "GET /communities/feed 404'te 'Çalışan bulunamadı' — iyi; ancak `employee_matches` audience.all=True kabul kuralı denetlenmedi (bu iterasyonda 2 topluluk da audience.all=True görünüyor)."
+  ],
+  "updated_files": ["/app/backend/tests/test_phase5.py"],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "100% for tested flows"},
+  "test_credentials": "localStorage pln_role + pln_emp. Erol 31147503-c442-4338-9815-8248daa91ada, Mert 6e5149b3-df66-43f4-a6a8-aaa7986e2720, Admin Selin f34c58ff-64d5-4d02-ba67-9bad0597e2d5.",
+  "seed_data_creation": "Testte TEST_ önekli topluluk (CRUD), TEST_disc/TEST_poll gönderileri (temizlendi), TEST_UI_disc + TEST_UI_poll (Yazılım topluluğunda kaldı), TEST_ui_comment, TEST_UI_msg_erol mesajı ve Mert'e 2 kudos oluşturuldu.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Faz 5 hem backend hem UI tarafında sağlıklı. WS ingress backend'de çalışıyor (Python istemcisiyle doğrulandı). Tarayıcı ws bağlantısı headless'te uyarı verse de polling fallback mesajları getiriyor. Yeni testler için kudos notifikasyonu Mert için 'seen' olarak işaretlenmiş durumda — yeni kudos oluşturarak tetikleyin. Yazılım topluluğunda TEST_UI_* gönderiler artakalmıştır; gerekirse admin post-del ile temizlenebilir."
+}

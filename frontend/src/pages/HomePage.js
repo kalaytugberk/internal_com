@@ -4,6 +4,7 @@ import { api } from "@/api";
 import { useApp } from "@/context/AppContext";
 import { ClipboardCheck, GaugeCircle, CalendarClock, ArrowRight, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { KudosCelebration } from "@/components/KudosNotifications";
 
 export const HomePage = () => {
   const navigate = useNavigate();
@@ -45,7 +46,11 @@ export const HomePage = () => {
       </h1>
       <p className="text-sm text-slate-500 mt-1">Bugün seni bekleyen aksiyonlar ve etkinlikler.</p>
 
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="mt-8">
+        <KudosCelebration />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Actions widget */}
         <div className="lg:col-span-2">
           <div className="flex items-center gap-2 mb-3">

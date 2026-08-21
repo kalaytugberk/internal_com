@@ -72,12 +72,11 @@ const CATALOG = {
   kudos: { tab: "kudos", desc: "Takdir değerleri, moderasyon ve puanlar." },
   rozet: { tab: "rozet", desc: "Puan ekonomisi, rozetler ve liderlik tablosu." },
   oyun: { tab: "oyun", desc: "Quiz oyunları, soru havuzu ve turnuvalar." },
+  topluluk: { tab: "topluluk", desc: "Topluluklar, sohbet, tartışma ve anketler." },
 };
 
 // Henüz yapılmamış kategoriler (yakında)
-const FUTURE_CATALOG = [
-  { key: "topluluk", label: "Topluluk", desc: "Sohbet ve tartışma alanları.", icon: "Users" },
-];
+const FUTURE_CATALOG = [];
 
 const blankCategory = () => ({
   category_type: "", display_name: "", icon: "Megaphone", icon_image: null,

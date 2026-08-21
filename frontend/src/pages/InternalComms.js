@@ -7,7 +7,6 @@ import { ArrowRight, Pin, Lock } from "lucide-react";
 
 const FUTURE = [
   { label: "İç İlanlar", icon: "Briefcase" },
-  { label: "Topluluk", icon: "Users" },
 ];
 
 export const InternalComms = () => {
@@ -56,6 +55,7 @@ export const InternalComms = () => {
     else if (cat.category_type === "kudos") navigate("/ic-iletisim/kudos");
     else if (cat.category_type === "rozet") navigate("/ic-iletisim/rozet");
     else if (cat.category_type === "oyun") navigate("/ic-iletisim/oyun");
+    else if (cat.category_type === "topluluk") navigate("/ic-iletisim/topluluk");
   };
 
   return (

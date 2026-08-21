@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -2847,6 +2847,367 @@ async def game_leaderboard(gid: str):
     return rows
 
 
+# ----------------------------- Faz 5: Topluluk + Kudos Bildirim -----------------------------
+
+class ConnectionManager:
+    def __init__(self):
+        self.active: Dict[str, List[WebSocket]] = {}
+
+    async def connect(self, cid: str, ws: WebSocket):
+        await ws.accept()
+        self.active.setdefault(cid, []).append(ws)
+
+    def disconnect(self, cid: str, ws: WebSocket):
+        if cid in self.active and ws in self.active[cid]:
+            self.active[cid].remove(ws)
+
+    async def broadcast(self, cid: str, message: dict):
+        for ws in list(self.active.get(cid, [])):
+            try:
+                await ws.send_json(message)
+            except Exception:
+                pass
+
+
+manager = ConnectionManager()
+
+
+class CommunityCreate(BaseModel):
+    name: str
+    description: str = ""
+    icon: str = "Users"
+    color: str = "sky"
+    audience: Dict[str, Any] = Field(default_factory=lambda: {"all": True})
+    status: str = "active"
+
+
+class CommunityUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    icon: Optional[str] = None
+    color: Optional[str] = None
+    audience: Optional[Dict[str, Any]] = None
+    status: Optional[str] = None
+
+
+class ExpertToggle(BaseModel):
+    employee_id: str
+
+
+class PostCreate(BaseModel):
+    author_id: str
+    type: str = "tartisma"      # tartisma | anket
+    title: str
+    body: str = ""
+    options: List[str] = []     # anket için seçenek metinleri
+
+
+class CommentCreate(BaseModel):
+    author_id: str
+    body: str
+
+
+class VotePayload(BaseModel):
+    employee_id: str
+    option_id: str
+
+
+class MessageCreate(BaseModel):
+    author_id: str
+    text: str
+
+
+def _emp_brief(emps, eid, experts=()):
+    e = emps.get(eid, {})
+    return {"id": eid, "name": e.get("name"), "avatar": e.get("avatar"),
+            "department": e.get("department"), "is_expert": eid in experts}
+
+
+def _post_out(p, emps, experts):
+    p["author"] = _emp_brief(emps, p["author_id"], experts)
+    for c in p.get("comments", []):
+        c["author"] = _emp_brief(emps, c["author_id"], experts)
+    p["comment_count"] = len(p.get("comments", []))
+    if p.get("type") == "anket":
+        total = sum(len(o.get("votes", [])) for o in p.get("options", []))
+        for o in p.get("options", []):
+            o["count"] = len(o.get("votes", []))
+            o["percent"] = round(100 * o["count"] / total) if total else 0
+        p["total_votes"] = total
+    return p
+
+
+async def seed_phase5():
+    if await db.categories.count_documents({"category_type": "topluluk"}) == 0:
+        cnt = await db.categories.count_documents({})
+        await db.categories.insert_one({
+            "id": new_id(), "category_type": "topluluk", "display_name": "Topluluk", "icon": "Users",
+            "icon_image": None, "status": "active", "audience": Audience().model_dump(),
+            "reporting_levels": ["sirket"], "content_type": "eylem", "pinnable": False,
+            "order": cnt, "created_at": now_iso(),
+        })
+    if await db.communities.count_documents({}) == 0:
+        emps = await db.employees.find({}, {"_id": 0}).to_list(1000)
+        if len(emps) >= 6:
+            defs = [
+                {"name": "Yazılım & Teknoloji", "description": "Kod, araçlar ve teknoloji sohbetleri.", "icon": "Code", "color": "violet", "expert": emps[4]["id"]},
+                {"name": "Spor & Sağlık", "description": "Koşu, yoga ve sağlıklı yaşam.", "icon": "Dumbbell", "color": "emerald", "expert": emps[2]["id"]},
+            ]
+            for d in defs:
+                cid = new_id()
+                await db.communities.insert_one({
+                    "id": cid, "name": d["name"], "description": d["description"], "icon": d["icon"],
+                    "color": d["color"], "audience": Audience().model_dump(), "status": "active",
+                    "experts": [d["expert"]], "created_at": now_iso(),
+                })
+                if d["name"].startswith("Yazılım"):
+                    pid = new_id()
+                    await db.community_posts.insert_one({
+                        "id": pid, "community_id": cid, "author_id": emps[5]["id"], "type": "tartisma",
+                        "title": "En sevdiğiniz kod editörü hangisi?", "body": "Günlük iş akışınızda hangi editörü kullanıyorsunuz ve neden?",
+                        "options": [], "pinned": True,
+                        "comments": [{"id": new_id(), "author_id": emps[4]["id"], "body": "VS Code + eklentiler benim için ideal.", "verified": True, "created_at": now_iso()}],
+                        "created_at": now_iso(),
+                    })
+                    await db.community_posts.insert_one({
+                        "id": new_id(), "community_id": cid, "author_id": emps[4]["id"], "type": "anket",
+                        "title": "Bir sonraki tech-talk konusu ne olsun?", "body": "",
+                        "options": [{"id": new_id(), "text": "Yapay Zeka", "votes": [emps[5]["id"], emps[2]["id"]]},
+                                    {"id": new_id(), "text": "Güvenlik", "votes": [emps[3]["id"]]},
+                                    {"id": new_id(), "text": "DevOps", "votes": []}],
+                        "pinned": False, "comments": [], "created_at": now_iso(),
+                    })
+                    await db.community_messages.insert_one({"id": new_id(), "community_id": cid, "author_id": emps[5]["id"], "text": "Herkese merhaba! 👋", "created_at": now_iso()})
+                    await db.community_messages.insert_one({"id": new_id(), "community_id": cid, "author_id": emps[4]["id"], "text": "Hoş geldiniz, buradayız!", "created_at": now_iso()})
+
+
+# ---- Communities ----
+@api_router.get("/communities")
+async def communities_list():
+    items = await db.communities.find({}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+    for c in items:
+        c["post_count"] = await db.community_posts.count_documents({"community_id": c["id"]})
+        c["member_hint"] = len(c.get("experts", []))
+    return items
+
+
+@api_router.get("/communities/feed")
+async def communities_feed(employee_id: str):
+    emp = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not emp:
+        raise HTTPException(404, "Çalışan bulunamadı")
+    items = await db.communities.find({"status": "active"}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+    result = []
+    for c in items:
+        if employee_matches(emp, c.get("audience")):
+            c["post_count"] = await db.community_posts.count_documents({"community_id": c["id"]})
+            c["is_expert"] = employee_id in c.get("experts", [])
+            result.append(c)
+    return result
+
+
+@api_router.post("/communities")
+async def community_create(p: CommunityCreate):
+    doc = {"id": new_id(), **p.model_dump(), "experts": [], "created_at": now_iso()}
+    await db.communities.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.get("/communities/{cid}")
+async def community_get(cid: str):
+    doc = await db.communities.find_one({"id": cid}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Topluluk bulunamadı")
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    doc["expert_people"] = [_emp_brief(emps, eid, doc.get("experts", [])) for eid in doc.get("experts", [])]
+    return doc
+
+
+@api_router.put("/communities/{cid}")
+async def community_update(cid: str, p: CommunityUpdate):
+    update = {k: v for k, v in p.model_dump(exclude_none=True).items()}
+    res = await db.communities.update_one({"id": cid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Topluluk bulunamadı")
+    return await db.communities.find_one({"id": cid}, {"_id": 0})
+
+
+@api_router.delete("/communities/{cid}")
+async def community_delete(cid: str):
+    await db.communities.delete_one({"id": cid})
+    await db.community_posts.delete_many({"community_id": cid})
+    await db.community_messages.delete_many({"community_id": cid})
+    return {"ok": True}
+
+
+@api_router.post("/communities/{cid}/expert")
+async def community_expert(cid: str, p: ExpertToggle):
+    c = await db.communities.find_one({"id": cid}, {"_id": 0})
+    if not c:
+        raise HTTPException(404, "Topluluk bulunamadı")
+    experts = c.get("experts", [])
+    if p.employee_id in experts:
+        experts.remove(p.employee_id)
+    else:
+        experts.append(p.employee_id)
+    await db.communities.update_one({"id": cid}, {"$set": {"experts": experts}})
+    return {"ok": True, "experts": experts}
+
+
+# ---- Posts ----
+@api_router.get("/communities/{cid}/posts")
+async def community_posts(cid: str):
+    c = await db.communities.find_one({"id": cid}, {"_id": 0})
+    experts = c.get("experts", []) if c else []
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    posts = await db.community_posts.find({"community_id": cid}, {"_id": 0}).sort([("pinned", -1), ("created_at", -1)]).to_list(1000)
+    return [_post_out(p, emps, experts) for p in posts]
+
+
+@api_router.post("/communities/{cid}/posts")
+async def post_create(cid: str, p: PostCreate):
+    options = [{"id": new_id(), "text": t, "votes": []} for t in p.options] if p.type == "anket" else []
+    if p.type == "anket" and len(options) < 2:
+        raise HTTPException(400, "Anket için en az 2 seçenek gerekli")
+    doc = {"id": new_id(), "community_id": cid, "author_id": p.author_id, "type": p.type,
+           "title": p.title, "body": p.body, "options": options, "pinned": False,
+           "comments": [], "created_at": now_iso()}
+    await db.community_posts.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.post("/posts/{pid}/comment")
+async def post_comment(pid: str, p: CommentCreate):
+    comment = {"id": new_id(), "author_id": p.author_id, "body": p.body, "verified": False, "created_at": now_iso()}
+    res = await db.community_posts.update_one({"id": pid}, {"$push": {"comments": comment}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Gönderi bulunamadı")
+    return {"ok": True, "comment": comment}
+
+
+@api_router.post("/posts/{pid}/vote")
+async def post_vote(pid: str, p: VotePayload):
+    post = await db.community_posts.find_one({"id": pid}, {"_id": 0})
+    if not post or post.get("type") != "anket":
+        raise HTTPException(404, "Anket bulunamadı")
+    options = post.get("options", [])
+    for o in options:
+        o["votes"] = [v for v in o.get("votes", []) if v != p.employee_id]
+    for o in options:
+        if o["id"] == p.option_id:
+            o["votes"].append(p.employee_id)
+    await db.community_posts.update_one({"id": pid}, {"$set": {"options": options}})
+    return {"ok": True}
+
+
+@api_router.post("/posts/{pid}/pin")
+async def post_pin(pid: str):
+    post = await db.community_posts.find_one({"id": pid}, {"_id": 0})
+    if not post:
+        raise HTTPException(404, "Gönderi bulunamadı")
+    await db.community_posts.update_one({"id": pid}, {"$set": {"pinned": not post.get("pinned", False)}})
+    return {"ok": True}
+
+
+@api_router.post("/posts/{pid}/comments/{coid}/verify")
+async def comment_verify(pid: str, coid: str):
+    post = await db.community_posts.find_one({"id": pid}, {"_id": 0})
+    if not post:
+        raise HTTPException(404, "Gönderi bulunamadı")
+    comments = post.get("comments", [])
+    for c in comments:
+        if c["id"] == coid:
+            c["verified"] = not c.get("verified", False)
+    await db.community_posts.update_one({"id": pid}, {"$set": {"comments": comments}})
+    return {"ok": True}
+
+
+@api_router.delete("/posts/{pid}")
+async def post_delete(pid: str):
+    await db.community_posts.delete_one({"id": pid})
+    return {"ok": True}
+
+
+@api_router.delete("/posts/{pid}/comments/{coid}")
+async def comment_delete(pid: str, coid: str):
+    await db.community_posts.update_one({"id": pid}, {"$pull": {"comments": {"id": coid}}})
+    return {"ok": True}
+
+
+# ---- Chat messages ----
+def _msg_out(m, emps, experts):
+    m["author"] = _emp_brief(emps, m["author_id"], experts)
+    return m
+
+
+@api_router.get("/communities/{cid}/messages")
+async def messages_list(cid: str, after: Optional[str] = None):
+    c = await db.communities.find_one({"id": cid}, {"_id": 0})
+    experts = c.get("experts", []) if c else []
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    q = {"community_id": cid}
+    if after:
+        q["created_at"] = {"$gt": after}
+    msgs = await db.community_messages.find(q, {"_id": 0}).sort("created_at", 1).to_list(2000)
+    return [_msg_out(m, emps, experts) for m in msgs]
+
+
+@api_router.post("/communities/{cid}/messages")
+async def message_create(cid: str, p: MessageCreate):
+    c = await db.communities.find_one({"id": cid}, {"_id": 0})
+    if not c:
+        raise HTTPException(404, "Topluluk bulunamadı")
+    emp = await db.employees.find_one({"id": p.author_id}, {"_id": 0})
+    doc = {"id": new_id(), "community_id": cid, "author_id": p.author_id, "text": p.text, "created_at": now_iso()}
+    await db.community_messages.insert_one(doc)
+    out = {**clean(doc), "author": _emp_brief({p.author_id: emp or {}}, p.author_id, c.get("experts", []))}
+    await manager.broadcast(cid, {"kind": "message", "data": out})
+    return out
+
+
+@api_router.delete("/messages/{mid}")
+async def message_delete(mid: str):
+    await db.community_messages.delete_one({"id": mid})
+    return {"ok": True}
+
+
+@api_router.websocket("/ws/community/{cid}")
+async def community_ws(ws: WebSocket, cid: str):
+    await manager.connect(cid, ws)
+    try:
+        while True:
+            data = await ws.receive_json()
+            author_id = data.get("author_id")
+            text = (data.get("text") or "").strip()
+            if not author_id or not text:
+                continue
+            c = await db.communities.find_one({"id": cid}, {"_id": 0})
+            emp = await db.employees.find_one({"id": author_id}, {"_id": 0})
+            doc = {"id": new_id(), "community_id": cid, "author_id": author_id, "text": text, "created_at": now_iso()}
+            await db.community_messages.insert_one(doc)
+            out = {**clean(doc), "author": _emp_brief({author_id: emp or {}}, author_id, (c or {}).get("experts", []))}
+            await manager.broadcast(cid, {"kind": "message", "data": out})
+    except WebSocketDisconnect:
+        manager.disconnect(cid, ws)
+    except Exception:
+        manager.disconnect(cid, ws)
+
+
+# ---- Kudos bildirimleri ----
+@api_router.get("/kudos/notifications")
+async def kudos_notifications(employee_id: str):
+    cfg = await gami_config()
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    items = await db.kudos.find({"to_id": employee_id, "status": "published", "seen_by_recipient": {"$ne": True}}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return {"count": len(items), "items": [_kudos_out(k, emps, cfg["kudos_values"]) for k in items]}
+
+
+@api_router.post("/kudos/notifications/seen")
+async def kudos_notifications_seen(p: LikePayload):
+    await db.kudos.update_many({"to_id": p.employee_id, "status": "published"}, {"$set": {"seen_by_recipient": True}})
+    return {"ok": True}
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -2876,6 +3237,7 @@ async def on_startup():
     await seed_phase3a_cats()
     await seed_phase3b_cats()
     await seed_phase4()
+    await seed_phase5()
 
 
 @app.on_event("shutdown")

@@ -28,6 +28,7 @@ import { KutlamaPage } from "@/pages/kutlama/Kutlama";
 import { KudosPage } from "@/pages/gamification/Kudos";
 import { GamificationPage } from "@/pages/gamification/Gamification";
 import { GamesFeed, GamePlay } from "@/pages/gamification/Games";
+import { CommunitiesFeed, CommunityDetail } from "@/pages/community/Community";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import { MoodReminderBanner } from "@/components/MoodReminderBanner";
 import { AdminPanel } from "@/pages/admin/AdminPanel";
@@ -76,6 +77,8 @@ function App() {
               <Route path="/ic-iletisim/rozet" element={<GamificationPage />} />
               <Route path="/ic-iletisim/oyun" element={<GamesFeed />} />
               <Route path="/ic-iletisim/oyun/:id" element={<GamePlay />} />
+              <Route path="/ic-iletisim/topluluk" element={<CommunitiesFeed />} />
+              <Route path="/ic-iletisim/topluluk/:id" element={<CommunityDetail />} />
               <Route path="/ik" element={<AdminRoute><HRPage /></AdminRoute>} />
               <Route path="/takvim" element={<CalendarPage />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
