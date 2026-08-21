@@ -62,11 +62,13 @@ const CATALOG = {
   servis: { tab: "routes", desc: "Servis seferlerini buradan tanımlayabilirsiniz." },
   anlik_bildirim: { tab: "anlik", desc: "Anlık bildirim gönder ve yanıtları takip et." },
   isg_acil: { tab: "isg", desc: "Acil durum bildirimi ve gerçek zamanlı yanıt takibi." },
+  hap_bilgi: { tab: "hapbilgi", desc: "Konu bazlı kısa bilgilendirmeler." },
+  indirim: { tab: "indirim", desc: "Çalışan indirim ve ayrıcalıklarını yönet." },
+  yemekhane: { tab: "yemekhane", desc: "Yemekhane menülerini gün bazında tanımla." },
 };
 
 // Henüz yapılmamış kategoriler (yakında)
 const FUTURE_CATALOG = [
-  { key: "hap_bilgi", label: "Hap bilgi", desc: "Konu bazlı kısa bilgilendirmeler.", icon: "Lightbulb" },
   { key: "kudos", label: "Kudos", desc: "Takdir ve teşekkür kuralları.", icon: "Award" },
   { key: "rozet", label: "Rozet / oyunlaştırma", desc: "Puan kaynakları ve rozet kriterleri.", icon: "Trophy" },
   { key: "indirim", label: "İndirim & ayrıcalıklar", desc: "Çalışan indirimlerini buradan girin.", icon: "Percent" },

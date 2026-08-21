@@ -9,7 +9,10 @@ import { ListingsManager } from "@/pages/listings/ListingsManager";
 import { AvatarConcepts } from "@/pages/avatar/AvatarConcepts";
 import { RoutesManager } from "@/pages/routes/RoutesManager";
 import { NotificationsManager } from "@/pages/notifications/NotificationsManager";
-import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile, Tag, Sparkles, Bus, Bell, ShieldAlert } from "lucide-react";
+import { HapBilgiManager } from "@/pages/hapbilgi/HapBilgi";
+import { DiscountsManager } from "@/pages/discounts/Discounts";
+import { CanteenManager } from "@/pages/canteen/Canteen";
+import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile, Tag, Sparkles, Bus, Bell, ShieldAlert, Lightbulb, Percent, Utensils } from "lucide-react";
 
 const TABS = [
   { key: "categories", label: "Kategori Yönetimi", icon: Layers },
@@ -22,6 +25,9 @@ const TABS = [
   { key: "routes", label: "Servis Güzergahı", icon: Bus },
   { key: "anlik", label: "Anlık Bildirim", icon: Bell },
   { key: "isg", label: "İSG — Acil Durum", icon: ShieldAlert },
+  { key: "hapbilgi", label: "Hap Bilgi", icon: Lightbulb },
+  { key: "indirim", label: "İndirim & Ayrıcalıklar", icon: Percent },
+  { key: "yemekhane", label: "Yemekhane Listesi", icon: Utensils },
 ];
 
 export const AdminPanel = () => {
@@ -61,6 +67,9 @@ export const AdminPanel = () => {
       {tab === "routes" && <RoutesManager />}
       {tab === "anlik" && <NotificationsManager kind="anlik_bildirim" />}
       {tab === "isg" && <NotificationsManager kind="isg_acil" isg />}
+      {tab === "hapbilgi" && <HapBilgiManager />}
+      {tab === "indirim" && <DiscountsManager />}
+      {tab === "yemekhane" && <CanteenManager />}
     </div>
   );
 };

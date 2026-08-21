@@ -18,6 +18,9 @@ import { ListingsFeed, ListingCreate, ListingDetail } from "@/pages/listings/Lis
 import { AvatarPage } from "@/pages/avatar/AvatarPage";
 import { RoutesFeed, RouteDetail } from "@/pages/routes/Routes";
 import { NotificationsPage } from "@/pages/notifications/NotificationsPage";
+import { HapBilgiPage } from "@/pages/hapbilgi/HapBilgi";
+import { DiscountsPage } from "@/pages/discounts/Discounts";
+import { CanteenPage } from "@/pages/canteen/Canteen";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import { MoodReminderBanner } from "@/components/MoodReminderBanner";
 import { AdminPanel } from "@/pages/admin/AdminPanel";
@@ -55,6 +58,9 @@ function App() {
               <Route path="/ic-iletisim/servis/:id" element={<RouteDetail />} />
               <Route path="/ic-iletisim/anlik" element={<NotificationsPage kind="anlik_bildirim" />} />
               <Route path="/ic-iletisim/isg-acil" element={<NotificationsPage kind="isg_acil" />} />
+              <Route path="/ic-iletisim/hap-bilgi" element={<HapBilgiPage />} />
+              <Route path="/ic-iletisim/indirim" element={<DiscountsPage />} />
+              <Route path="/ic-iletisim/yemekhane" element={<CanteenPage />} />
               <Route path="/ik" element={<AdminRoute><HRPage /></AdminRoute>} />
               <Route path="/takvim" element={<CalendarPage />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />

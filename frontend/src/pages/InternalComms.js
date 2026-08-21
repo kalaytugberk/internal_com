@@ -47,6 +47,9 @@ export const InternalComms = () => {
     else if (cat.category_type === "servis") navigate("/ic-iletisim/servis");
     else if (cat.category_type === "anlik_bildirim") navigate("/ic-iletisim/anlik");
     else if (cat.category_type === "isg_acil") navigate("/ic-iletisim/isg-acil");
+    else if (cat.category_type === "hap_bilgi") navigate("/ic-iletisim/hap-bilgi");
+    else if (cat.category_type === "indirim") navigate("/ic-iletisim/indirim");
+    else if (cat.category_type === "yemekhane") navigate("/ic-iletisim/yemekhane");
   };
 
   return (

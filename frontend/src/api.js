@@ -105,4 +105,27 @@ export const api = {
   respondNotification: (id, d) => http.post(`/notifications/${id}/respond`, d).then((r) => r.data),
   notificationReport: (id) => http.get(`/notifications/${id}/report`).then((r) => r.data),
   deleteNotification: (id) => http.delete(`/notifications/${id}`).then((r) => r.data),
+
+  hapTopics: () => http.get("/hapbilgi/topics").then((r) => r.data),
+  createHapTopic: (d) => http.post("/hapbilgi/topics", d).then((r) => r.data),
+  deleteHapTopic: (id) => http.delete(`/hapbilgi/topics/${id}`).then((r) => r.data),
+  hapPosts: () => http.get("/hapbilgi/posts").then((r) => r.data),
+  createHapPost: (d) => http.post("/hapbilgi/posts", d).then((r) => r.data),
+  deleteHapPost: (id) => http.delete(`/hapbilgi/posts/${id}`).then((r) => r.data),
+  hapFeed: (employeeId, topicId) => http.get("/hapbilgi/feed", { params: { employee_id: employeeId, ...(topicId ? { topic_id: topicId } : {}) } }).then((r) => r.data),
+  likeHapPost: (id, employeeId) => http.post(`/hapbilgi/posts/${id}/like`, { employee_id: employeeId }).then((r) => r.data),
+
+  discCats: () => http.get("/discounts/categories").then((r) => r.data),
+  createDiscCat: (d) => http.post("/discounts/categories", d).then((r) => r.data),
+  deleteDiscCat: (id) => http.delete(`/discounts/categories/${id}`).then((r) => r.data),
+  discounts: () => http.get("/discounts").then((r) => r.data),
+  createDiscount: (d) => http.post("/discounts", d).then((r) => r.data),
+  deleteDiscount: (id) => http.delete(`/discounts/${id}`).then((r) => r.data),
+  discountsFeed: (employeeId, categoryId) => http.get("/discounts/feed", { params: { employee_id: employeeId, ...(categoryId ? { category_id: categoryId } : {}) } }).then((r) => r.data),
+
+  canteens: () => http.get("/canteens").then((r) => r.data),
+  createCanteen: (d) => http.post("/canteens", d).then((r) => r.data),
+  updateCanteen: (id, d) => http.put(`/canteens/${id}`, d).then((r) => r.data),
+  deleteCanteen: (id) => http.delete(`/canteens/${id}`).then((r) => r.data),
+  canteensFeed: (employeeId) => http.get("/canteens/feed", { params: { employee_id: employeeId } }).then((r) => r.data),
 };

@@ -1789,6 +1789,249 @@ async def delete_notification(nid: str):
     return {"ok": True}
 
 
+# ----------------------------- Faz 2: Hap Bilgi / İndirim / Yemekhane -----------------------------
+
+class HapTopicCreate(BaseModel):
+    name: str
+
+
+class HapPostCreate(BaseModel):
+    topic_id: Optional[str] = None
+    title: str
+    body: str = ""
+    image: Optional[str] = None
+
+
+class DiscCatCreate(BaseModel):
+    name: str
+
+
+class DiscountCreate(BaseModel):
+    category_id: Optional[str] = None
+    brand: str
+    description: str = ""
+    rate: str = ""
+    contact: str = ""
+    required_points: Optional[int] = None
+    audience: Dict[str, Any] = Field(default_factory=lambda: {"all": True})
+
+
+class Meal(BaseModel):
+    name: str
+    calorie: Optional[str] = None
+
+
+class MenuDay(BaseModel):
+    id: str = Field(default_factory=new_id)
+    label: str
+    meals: List[Meal] = []
+
+
+class CanteenCreate(BaseModel):
+    name: str
+    audience: Dict[str, Any] = Field(default_factory=lambda: {"all": True})
+    days: List[MenuDay] = []
+
+
+class CanteenUpdate(BaseModel):
+    name: Optional[str] = None
+    audience: Optional[Dict[str, Any]] = None
+    days: Optional[List[MenuDay]] = None
+
+
+class LikePayload(BaseModel):
+    employee_id: str
+
+
+async def seed_phase2_cats():
+    for kind, name, icon in [("hap_bilgi", "Hap Bilgi", "Lightbulb"), ("indirim", "İndirim & Ayrıcalıklar", "Percent"), ("yemekhane", "Yemekhane Listesi", "Utensils")]:
+        if await db.categories.count_documents({"category_type": kind}) == 0:
+            cnt = await db.categories.count_documents({})
+            await db.categories.insert_one({
+                "id": new_id(), "category_type": kind, "display_name": name, "icon": icon,
+                "icon_image": None, "status": "active", "audience": Audience().model_dump(),
+                "reporting_levels": ["sirket"], "content_type": "pasif", "pinnable": False,
+                "order": cnt, "created_at": now_iso(),
+            })
+
+
+# ---- Hap Bilgi ----
+@api_router.get("/hapbilgi/topics")
+async def hap_topics():
+    return await db.hap_topics.find({}, {"_id": 0}).sort("name", 1).to_list(1000)
+
+
+@api_router.post("/hapbilgi/topics")
+async def hap_topic_create(p: HapTopicCreate):
+    doc = {"id": new_id(), "name": p.name}
+    await db.hap_topics.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.delete("/hapbilgi/topics/{tid}")
+async def hap_topic_del(tid: str):
+    await db.hap_topics.delete_one({"id": tid})
+    return {"ok": True}
+
+
+def _topic_name(topics, tid):
+    return next((t["name"] for t in topics if t["id"] == tid), None)
+
+
+@api_router.get("/hapbilgi/posts")
+async def hap_posts():
+    topics = await db.hap_topics.find({}, {"_id": 0}).to_list(1000)
+    posts = await db.hap_posts.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for p in posts:
+        p["like_count"] = len(p.get("likes") or [])
+        p["topic_name"] = _topic_name(topics, p.get("topic_id"))
+    return posts
+
+
+@api_router.post("/hapbilgi/posts")
+async def hap_post_create(p: HapPostCreate):
+    doc = {"id": new_id(), **p.model_dump(), "likes": [], "created_at": now_iso()}
+    await db.hap_posts.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.delete("/hapbilgi/posts/{pid}")
+async def hap_post_del(pid: str):
+    await db.hap_posts.delete_one({"id": pid})
+    return {"ok": True}
+
+
+@api_router.get("/hapbilgi/feed")
+async def hap_feed(employee_id: str, topic_id: Optional[str] = None):
+    topics = await db.hap_topics.find({}, {"_id": 0}).to_list(1000)
+    q = {"topic_id": topic_id} if topic_id else {}
+    posts = await db.hap_posts.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for p in posts:
+        likes = p.get("likes") or []
+        p["like_count"] = len(likes)
+        p["liked"] = employee_id in likes
+        p["topic_name"] = _topic_name(topics, p.get("topic_id"))
+    return posts
+
+
+@api_router.post("/hapbilgi/posts/{pid}/like")
+async def hap_like(pid: str, payload: LikePayload):
+    post = await db.hap_posts.find_one({"id": pid}, {"_id": 0})
+    if not post:
+        raise HTTPException(404, "İçerik bulunamadı")
+    likes = post.get("likes") or []
+    if payload.employee_id in likes:
+        likes.remove(payload.employee_id)
+    else:
+        likes.append(payload.employee_id)
+    await db.hap_posts.update_one({"id": pid}, {"$set": {"likes": likes}})
+    return {"like_count": len(likes), "liked": payload.employee_id in likes}
+
+
+# ---- İndirim ----
+@api_router.get("/discounts/categories")
+async def disc_cats():
+    return await db.disc_cats.find({}, {"_id": 0}).sort("name", 1).to_list(1000)
+
+
+@api_router.post("/discounts/categories")
+async def disc_cat_create(p: DiscCatCreate):
+    doc = {"id": new_id(), "name": p.name}
+    await db.disc_cats.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.delete("/discounts/categories/{cid}")
+async def disc_cat_del(cid: str):
+    await db.disc_cats.delete_one({"id": cid})
+    return {"ok": True}
+
+
+@api_router.get("/discounts")
+async def disc_list():
+    cats = await db.disc_cats.find({}, {"_id": 0}).to_list(1000)
+    items = await db.discounts.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for d in items:
+        d["category_name"] = next((c["name"] for c in cats if c["id"] == d.get("category_id")), None)
+    return items
+
+
+@api_router.post("/discounts")
+async def disc_create(p: DiscountCreate):
+    doc = {"id": new_id(), **p.model_dump(), "created_at": now_iso()}
+    await db.discounts.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.delete("/discounts/{did}")
+async def disc_del(did: str):
+    await db.discounts.delete_one({"id": did})
+    return {"ok": True}
+
+
+@api_router.get("/discounts/feed")
+async def disc_feed(employee_id: str, category_id: Optional[str] = None):
+    emp = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not emp:
+        raise HTTPException(404, "Çalışan bulunamadı")
+    cats = await db.disc_cats.find({}, {"_id": 0}).to_list(1000)
+    items = await db.discounts.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    result = []
+    for d in items:
+        if category_id and d.get("category_id") != category_id:
+            continue
+        if not employee_matches(emp, d.get("audience")):
+            continue
+        # required_points sadece görünürlük eşiği; puan sistemi henüz yok => >0 gizli
+        if d.get("required_points"):
+            continue
+        d["category_name"] = next((c["name"] for c in cats if c["id"] == d.get("category_id")), None)
+        result.append(d)
+    return result
+
+
+# ---- Yemekhane ----
+@api_router.get("/canteens")
+async def canteen_list():
+    return await db.canteens.find({}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+
+
+@api_router.post("/canteens")
+async def canteen_create(p: CanteenCreate):
+    data = p.model_dump()
+    data["days"] = [{"id": d.get("id") or new_id(), **{k: v for k, v in d.items() if k != "id"}} for d in data.get("days", [])]
+    doc = {"id": new_id(), **data, "created_at": now_iso(), "updated_at": now_iso()}
+    await db.canteens.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.put("/canteens/{cid}")
+async def canteen_update(cid: str, p: CanteenUpdate):
+    update = {k: v for k, v in p.model_dump(exclude_none=True).items()}
+    if "days" in update:
+        update["days"] = [{"id": d.get("id") or new_id(), **{k: v for k, v in d.items() if k != "id"}} for d in update["days"]]
+    update["updated_at"] = now_iso()
+    res = await db.canteens.update_one({"id": cid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Yemekhane bulunamadı")
+    return await db.canteens.find_one({"id": cid}, {"_id": 0})
+
+
+@api_router.delete("/canteens/{cid}")
+async def canteen_del(cid: str):
+    await db.canteens.delete_one({"id": cid})
+    return {"ok": True}
+
+
+@api_router.get("/canteens/feed")
+async def canteen_feed(employee_id: str):
+    emp = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not emp:
+        raise HTTPException(404, "Çalışan bulunamadı")
+    items = await db.canteens.find({}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+    return [c for c in items if employee_matches(emp, c.get("audience"))]
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -1814,6 +2057,7 @@ async def on_startup():
     await seed_routes_if_empty()
     await seed_audiences_if_empty()
     await seed_notification_cats()
+    await seed_phase2_cats()
 
 
 @app.on_event("shutdown")
