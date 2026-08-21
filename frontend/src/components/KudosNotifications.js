@@ -9,10 +9,10 @@ export const KudosBell = () => {
   const { currentEmployeeId, role } = useApp();
   const [items, setItems] = useState([]);
 
-  const load = () => { if (currentEmployeeId) api.kudosNotifications(currentEmployeeId).then((r) => setItems(r.items || [])); };
+  const load = () => { if (currentEmployeeId) api.inbox(currentEmployeeId).then((r) => setItems(r.items || [])); };
   useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, [currentEmployeeId, role]);
 
-  const markSeen = async () => { if (currentEmployeeId) { await api.markKudosSeen(currentEmployeeId); setItems([]); } };
+  const markSeen = async () => { if (currentEmployeeId) { await api.inboxSeen(currentEmployeeId); setItems([]); } };
 
   return (
     <DropdownMenu onOpenChange={(o) => { if (o) load(); }}>
@@ -32,10 +32,10 @@ export const KudosBell = () => {
           <div className="py-6 text-center text-sm text-slate-400">Yeni bildirim yok</div>
         ) : (
           <div className="max-h-80 overflow-y-auto pln-scroll">
-            {items.map((k) => (
-              <div key={k.id} data-testid={`notif-item-${k.id}`} className="flex items-start gap-2.5 px-3 py-2.5 hover:bg-slate-50">
-                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 grid place-items-center shrink-0"><Icon name={k.value_icon} className="w-4 h-4" /></div>
-                <div className="text-sm text-slate-600"><span className="font-semibold text-slate-800">{k.from_name}</span> sana <span className="font-semibold">{k.value_label}</span> kudos'u verdi 🎉{k.message && <p className="text-xs text-slate-400 mt-0.5">"{k.message}"</p>}</div>
+            {items.map((it) => (
+              <div key={it.id} data-testid={`notif-item-${it.id}`} className="flex items-start gap-2.5 px-3 py-2.5 hover:bg-slate-50">
+                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 grid place-items-center shrink-0"><Icon name={it.icon} className="w-4 h-4" /></div>
+                <div className="text-sm text-slate-600">{it.text}{it.sub && <p className="text-xs text-slate-400 mt-0.5">{it.sub}</p>}</div>
               </div>
             ))}
           </div>

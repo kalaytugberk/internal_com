@@ -132,7 +132,7 @@ export const Shell = ({ children }) => {
               <Settings className="w-5 h-5" />
             </button>
             <KudosBell />
-            <div className="flex items-center gap-2 pl-1">
+            <div data-testid="profile-link" onClick={() => navigate("/profil")} className="flex items-center gap-2 pl-1 cursor-pointer rounded-full hover:bg-slate-50 py-1 pr-2 transition-colors">
               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 text-xs font-bold grid place-items-center overflow-hidden">
                 {role === "employee" && currentEmployee?.avatar
                   ? <img src={currentEmployee.avatar} alt="" className="w-full h-full object-cover" data-testid="nav-avatar" />

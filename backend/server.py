@@ -3073,6 +3073,10 @@ async def post_create(cid: str, p: PostCreate):
            "title": p.title, "body": p.body, "options": options, "pinned": False,
            "comments": [], "created_at": now_iso()}
     await db.community_posts.insert_one(doc)
+    author = await db.employees.find_one({"id": p.author_id}, {"_id": 0})
+    aname = (author or {}).get("name", "Bir çalışan")
+    label = "anket" if p.type == "anket" else "tartışma"
+    await notify_experts(cid, p.author_id, "post", f"{aname} yeni bir {label} paylaştı: {p.title}", doc["id"])
     return clean(doc)
 
 
@@ -3082,6 +3086,11 @@ async def post_comment(pid: str, p: CommentCreate):
     res = await db.community_posts.update_one({"id": pid}, {"$push": {"comments": comment}})
     if res.matched_count == 0:
         raise HTTPException(404, "Gönderi bulunamadı")
+    post = await db.community_posts.find_one({"id": pid}, {"_id": 0})
+    author = await db.employees.find_one({"id": p.author_id}, {"_id": 0})
+    aname = (author or {}).get("name", "Bir çalışan")
+    if post:
+        await notify_experts(post["community_id"], p.author_id, "comment", f"{aname} bir gönderiye yorum yaptı: {p.body[:50]}", pid)
     return {"ok": True, "comment": comment}
 
 
@@ -3206,6 +3215,81 @@ async def kudos_notifications(employee_id: str):
 async def kudos_notifications_seen(p: LikePayload):
     await db.kudos.update_many({"to_id": p.employee_id, "status": "published"}, {"$set": {"seen_by_recipient": True}})
     return {"ok": True}
+
+
+# ---- Bildirim kutusu (Kudos + Topluluk uzman bildirimleri) + Profil ----
+async def notify_experts(community_id, actor_id, kind, text, post_id=None):
+    c = await db.communities.find_one({"id": community_id}, {"_id": 0})
+    if not c:
+        return
+    for eid in c.get("experts", []):
+        if eid == actor_id:
+            continue
+        await db.user_notifications.insert_one({
+            "id": new_id(), "employee_id": eid, "type": "community", "kind": kind,
+            "community_id": community_id, "community_name": c.get("name"),
+            "post_id": post_id, "text": text, "seen": False, "created_at": now_iso(),
+        })
+
+
+@api_router.get("/notifications/inbox")
+async def notifications_inbox(employee_id: str):
+    cfg = await gami_config()
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    items = []
+    kud = await db.kudos.find({"to_id": employee_id, "status": "published", "seen_by_recipient": {"$ne": True}}, {"_id": 0}).to_list(100)
+    for k in kud:
+        v = next((x for x in cfg["kudos_values"] if x["key"] == k["value"]), None)
+        frm = emps.get(k["from_id"], {})
+        items.append({"id": "kudos:" + k["id"], "icon": (v or {}).get("icon", "Award"),
+                      "text": f"{frm.get('name')} sana {(v or {}).get('label', k['value'])} kudos'u verdi 🎉",
+                      "sub": k.get("message"), "created_at": k["created_at"]})
+    un = await db.user_notifications.find({"employee_id": employee_id, "seen": {"$ne": True}}, {"_id": 0}).to_list(200)
+    for n in un:
+        items.append({"id": "un:" + n["id"], "icon": "MessageSquare" if n.get("kind") == "comment" else "MessagesSquare",
+                      "text": n.get("text"), "sub": n.get("community_name"), "created_at": n["created_at"]})
+    items.sort(key=lambda x: x["created_at"], reverse=True)
+    return {"count": len(items), "items": items}
+
+
+@api_router.post("/notifications/inbox/seen")
+async def notifications_inbox_seen(p: LikePayload):
+    await db.kudos.update_many({"to_id": p.employee_id, "status": "published"}, {"$set": {"seen_by_recipient": True}})
+    await db.user_notifications.update_many({"employee_id": p.employee_id}, {"$set": {"seen": True}})
+    return {"ok": True}
+
+
+@api_router.get("/profile/{eid}")
+async def user_profile(eid: str):
+    emp = await db.employees.find_one({"id": eid}, {"_id": 0})
+    if not emp:
+        raise HTTPException(404, "Çalışan bulunamadı")
+    m = await employee_stats(eid)
+    cur, nxt = level_for(m["total_points"])
+    if nxt:
+        span = nxt["min"] - cur["min"]
+        progress = round(100 * (m["total_points"] - cur["min"]) / span) if span else 100
+        to_next = nxt["min"] - m["total_points"]
+    else:
+        progress, to_next = 100, 0
+    lb = await gami_leaderboard()
+    rank = next((r["rank"] for r in lb if r["employee_id"] == eid), None)
+    comms = await db.communities.find({"experts": eid}, {"_id": 0}).to_list(1000)
+    expert_in = [{"id": c["id"], "name": c["name"], "icon": c.get("icon"), "color": c.get("color")} for c in comms]
+    reg = await db.route_registrations.find_one({"employee_id": eid}, {"_id": 0})
+    route_info = None
+    if reg:
+        route = await db.routes.find_one({"id": reg.get("route_id")}, {"_id": 0})
+        if route:
+            stop = next((s for s in route.get("stops", []) if s.get("id") == reg.get("stop_id")), None)
+            route_info = {"route_name": route.get("name"), "stop_name": (stop or {}).get("name"),
+                          "time": (stop or {}).get("time"), "direction": route.get("direction")}
+    return {"employee": {"id": emp["id"], "name": emp.get("name"), "department": emp.get("department"),
+                         "location": emp.get("location"), "title": emp.get("title"), "seniority": emp.get("seniority"),
+                         "avatar": emp.get("avatar"), "email": emp.get("email"), "phone": emp.get("phone")},
+            "metrics": m, "level": cur, "next_level": nxt, "progress": progress, "to_next": to_next,
+            "badges": earned_badges(m), "rank": rank, "total_people": len(lb),
+            "expert_in": expert_in, "route": route_info}
 
 
 app.include_router(api_router)
