@@ -161,4 +161,26 @@ export const api = {
   createTemplate: (d) => http.post("/celebration-templates", d).then((r) => r.data),
   deleteTemplate: (id) => http.delete(`/celebration-templates/${id}`).then((r) => r.data),
   celebrationsFeed: () => http.get("/celebrations/feed").then((r) => r.data),
+
+  gamiConfig: () => http.get("/gami/config").then((r) => r.data),
+  updateGamiConfig: (d) => http.put("/gami/config", d).then((r) => r.data),
+  leaderboard: () => http.get("/gami/leaderboard").then((r) => r.data),
+  gamiProfile: (employeeId) => http.get("/gami/profile", { params: { employee_id: employeeId } }).then((r) => r.data),
+
+  kudosFeed: () => http.get("/kudos/feed").then((r) => r.data),
+  createKudos: (d) => http.post("/kudos", d).then((r) => r.data),
+  kudosMine: (employeeId) => http.get("/kudos/mine", { params: { employee_id: employeeId } }).then((r) => r.data),
+  kudosPending: () => http.get("/kudos/pending").then((r) => r.data),
+  approveKudos: (id) => http.post(`/kudos/${id}/approve`).then((r) => r.data),
+  rejectKudos: (id) => http.post(`/kudos/${id}/reject`).then((r) => r.data),
+  deleteKudos: (id) => http.delete(`/kudos/${id}`).then((r) => r.data),
+
+  games: () => http.get("/games").then((r) => r.data),
+  createGame: (d) => http.post("/games", d).then((r) => r.data),
+  updateGame: (id, d) => http.put(`/games/${id}`, d).then((r) => r.data),
+  deleteGame: (id) => http.delete(`/games/${id}`).then((r) => r.data),
+  gamesFeed: (employeeId) => http.get("/games/feed", { params: { employee_id: employeeId } }).then((r) => r.data),
+  gamePlayData: (id, employeeId) => http.get(`/games/${id}/play`, { params: { employee_id: employeeId } }).then((r) => r.data),
+  submitGame: (id, d) => http.post(`/games/${id}/play`, d).then((r) => r.data),
+  gameLeaderboard: (id) => http.get(`/games/${id}/leaderboard`).then((r) => r.data),
 };

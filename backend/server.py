@@ -2424,6 +2424,429 @@ async def celebrations_feed():
     return out
 
 
+# ----------------------------- Faz 4: Oyunlaştırma (Kudos + Rozet + Oyun) -----------------------------
+
+GAMI_DEFAULTS = {
+    "id": "gami",
+    "kudos_moderation": False,
+    "points": {"kudos_received": 10, "kudos_given": 2, "game_correct": 5, "game_perfect": 15},
+    "kudos_values": [
+        {"key": "takim", "label": "Takım Oyunu", "icon": "Users", "color": "sky"},
+        {"key": "inovasyon", "label": "İnovasyon", "icon": "Lightbulb", "color": "amber"},
+        {"key": "musteri", "label": "Müşteri Odaklılık", "icon": "Heart", "color": "rose"},
+        {"key": "liderlik", "label": "Liderlik", "icon": "Flag", "color": "violet"},
+        {"key": "guvenilirlik", "label": "Güvenilirlik", "icon": "Handshake", "color": "emerald"},
+        {"key": "pozitif", "label": "Pozitif Enerji", "icon": "Sparkles", "color": "orange"},
+    ],
+}
+
+LEVELS = [
+    {"level": 1, "name": "Çaylak", "min": 0},
+    {"level": 2, "name": "Çırak", "min": 50},
+    {"level": 3, "name": "Kalfa", "min": 150},
+    {"level": 4, "name": "Usta", "min": 300},
+    {"level": 5, "name": "Uzman", "min": 500},
+    {"level": 6, "name": "Şampiyon", "min": 800},
+    {"level": 7, "name": "Efsane", "min": 1200},
+]
+
+BADGES = [
+    {"code": "first_kudos", "name": "İlk Takdir", "description": "İlk kudos'unu ver", "icon": "Award", "type": "kudos_given", "threshold": 1},
+    {"code": "generous", "name": "Cömert", "description": "10 kudos ver", "icon": "HeartHandshake", "type": "kudos_given", "threshold": 10},
+    {"code": "appreciated", "name": "Takdir Edilen", "description": "5 kudos al", "icon": "Star", "type": "kudos_received", "threshold": 5},
+    {"code": "star", "name": "Yıldız", "description": "20 kudos al", "icon": "Trophy", "type": "kudos_received", "threshold": 20},
+    {"code": "player", "name": "Oyuncu", "description": "İlk oyununu oyna", "icon": "Gamepad2", "type": "games_played", "threshold": 1},
+    {"code": "quizmaster", "name": "Bilgi Ustası", "description": "5 oyun tamamla", "icon": "Brain", "type": "games_played", "threshold": 5},
+    {"code": "streak3", "name": "Seri Başı", "description": "3 gün üst üste aktif ol", "icon": "Flame", "type": "streak", "threshold": 3},
+    {"code": "streak7", "name": "Kararlı", "description": "7 gün üst üste aktif ol", "icon": "Flame", "type": "streak", "threshold": 7},
+    {"code": "point100", "name": "Yüzler Kulübü", "description": "100 puan topla", "icon": "Zap", "type": "total_points", "threshold": 100},
+    {"code": "point500", "name": "Puan Avcısı", "description": "500 puan topla", "icon": "Rocket", "type": "total_points", "threshold": 500},
+]
+
+
+async def gami_config():
+    cfg = await db.gami_config.find_one({"id": "gami"}, {"_id": 0}) or {}
+    merged = {**GAMI_DEFAULTS, **cfg}
+    return merged
+
+
+async def award_points(employee_id, points, source, ref_id=None, note=""):
+    if not points:
+        return
+    await db.points_ledger.insert_one({
+        "id": new_id(), "employee_id": employee_id, "points": points,
+        "source": source, "ref_id": ref_id, "note": note, "created_at": now_iso(),
+    })
+
+
+def level_for(total):
+    cur = LEVELS[0]
+    for l in LEVELS:
+        if total >= l["min"]:
+            cur = l
+    nxt = next((l for l in LEVELS if l["min"] > total), None)
+    return cur, nxt
+
+
+async def employee_stats(employee_id):
+    from datetime import date, timedelta
+    ledger = await db.points_ledger.find({"employee_id": employee_id}, {"_id": 0}).to_list(100000)
+    total = sum(x["points"] for x in ledger)
+    kudos_received = await db.kudos.count_documents({"to_id": employee_id, "status": "published"})
+    kudos_given = await db.kudos.count_documents({"from_id": employee_id, "status": "published"})
+    games_played = await db.game_plays.count_documents({"employee_id": employee_id, "finished": True})
+    dayset = {x["created_at"][:10] for x in ledger}
+    streak = 0
+    cursor = date.today()
+    if cursor.isoformat() not in dayset:
+        cursor = cursor - timedelta(days=1)  # seriyi dünden de sayabil
+    while cursor.isoformat() in dayset:
+        streak += 1
+        cursor = cursor - timedelta(days=1)
+    return {"total_points": total, "kudos_received": kudos_received,
+            "kudos_given": kudos_given, "games_played": games_played, "streak": streak}
+
+
+def earned_badges(metrics):
+    out = []
+    for b in BADGES:
+        val = metrics.get(b["type"], 0)
+        out.append({**b, "earned": val >= b["threshold"], "current": val})
+    return out
+
+
+def _kudos_out(k, emps, values):
+    frm = emps.get(k["from_id"], {})
+    to = emps.get(k["to_id"], {})
+    v = next((x for x in values if x["key"] == k["value"]), None)
+    k["from_name"] = frm.get("name")
+    k["from_avatar"] = frm.get("avatar")
+    k["to_name"] = to.get("name")
+    k["to_avatar"] = to.get("avatar")
+    k["to_department"] = to.get("department")
+    k["value_label"] = v["label"] if v else k["value"]
+    k["value_icon"] = v["icon"] if v else "Award"
+    k["value_color"] = v["color"] if v else "sky"
+    return k
+
+
+class KudosCreate(BaseModel):
+    from_id: str
+    to_id: str
+    value: str
+    message: str = ""
+
+
+class GamiConfigUpdate(BaseModel):
+    kudos_moderation: Optional[bool] = None
+    kudos_values: Optional[List[Dict[str, Any]]] = None
+    points: Optional[Dict[str, int]] = None
+
+
+class GameQuestion(BaseModel):
+    id: str = Field(default_factory=new_id)
+    text: str
+    options: List[str] = []
+    correct_index: int = 0
+
+
+class GameCreate(BaseModel):
+    title: str
+    description: str = ""
+    questions: List[GameQuestion] = []
+    time_limit: int = 20
+    status: str = "active"
+    is_tournament: bool = False
+    period: str = "aylik"
+
+
+class GameUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    questions: Optional[List[GameQuestion]] = None
+    time_limit: Optional[int] = None
+    status: Optional[str] = None
+    is_tournament: Optional[bool] = None
+    period: Optional[str] = None
+
+
+class GamePlay(BaseModel):
+    employee_id: str
+    answers: List[int] = []
+
+
+async def seed_phase4():
+    for kind, name, icon in [("kudos", "Kudos", "Award"), ("rozet", "Rozet / Oyunlaştırma", "Trophy"), ("oyun", "Oyun", "Gamepad2")]:
+        if await db.categories.count_documents({"category_type": kind}) == 0:
+            cnt = await db.categories.count_documents({})
+            await db.categories.insert_one({
+                "id": new_id(), "category_type": kind, "display_name": name, "icon": icon,
+                "icon_image": None, "status": "active", "audience": Audience().model_dump(),
+                "reporting_levels": ["sirket", "kisi"], "content_type": "eylem", "pinnable": False,
+                "order": cnt, "created_at": now_iso(),
+            })
+    if await db.gami_config.count_documents({}) == 0:
+        await db.gami_config.insert_one({**GAMI_DEFAULTS})
+    if await db.kudos.count_documents({}) == 0:
+        emps = await db.employees.find({}, {"_id": 0}).to_list(1000)
+        if len(emps) >= 6:
+            samples = [
+                (emps[2], emps[3], "takim", "Proje tesliminde harika bir ekip çalışması gösterdin!"),
+                (emps[4], emps[2], "inovasyon", "Getirdiğin yeni fikir tüm süreci hızlandırdı."),
+                (emps[3], emps[5], "pozitif", "Enerjin tüm ofise ilham veriyor."),
+                (emps[5], emps[4], "guvenilirlik", "Her zaman güvenebileceğimiz birisin."),
+                (emps[2], emps[4], "liderlik", "Zor bir günde ekibe liderlik ettin."),
+            ]
+            pts = GAMI_DEFAULTS["points"]
+            for frm, to, val, msg in samples:
+                kid = new_id()
+                await db.kudos.insert_one({"id": kid, "from_id": frm["id"], "to_id": to["id"], "value": val,
+                                           "message": msg, "status": "published", "created_at": now_iso()})
+                await award_points(to["id"], pts["kudos_received"], "kudos_received", kid, f"{frm['name']} tarafından")
+                await award_points(frm["id"], pts["kudos_given"], "kudos_given", kid, f"{to['name']} için")
+    if await db.games.count_documents({}) == 0:
+        await db.games.insert_one({
+            "id": new_id(), "title": "Şirket Kültürü Bilgi Yarışması",
+            "description": "Şirketimizi ne kadar tanıyorsun? Kısa bir quiz ile test et!",
+            "questions": [
+                {"id": new_id(), "text": "Şirketimizin merkez ofisi hangi şehirde?", "options": ["İstanbul", "Ankara", "İzmir", "Bursa"], "correct_index": 0},
+                {"id": new_id(), "text": "Haftalık nabız (pulse) anketinin amacı nedir?", "options": ["Ceza vermek", "Çalışan bağlılığını ölçmek", "İzin takibi", "Maaş hesabı"], "correct_index": 1},
+                {"id": new_id(), "text": "Ramak kala bildirimi ne için kullanılır?", "options": ["İzin talebi", "İş güvenliği riskleri", "Yemek menüsü", "Etkinlik daveti"], "correct_index": 1},
+            ],
+            "time_limit": 20, "status": "active", "is_tournament": True, "period": "aylik",
+            "created_at": now_iso(), "updated_at": now_iso(),
+        })
+
+
+# ---- Gamification config / leaderboard / profile ----
+@api_router.get("/gami/config")
+async def get_gami_config():
+    return await gami_config()
+
+
+@api_router.put("/gami/config")
+async def update_gami_config(p: GamiConfigUpdate):
+    update = {k: v for k, v in p.model_dump(exclude_none=True).items()}
+    await db.gami_config.update_one({"id": "gami"}, {"$set": update}, upsert=True)
+    return await gami_config()
+
+
+@api_router.get("/gami/leaderboard")
+async def gami_leaderboard():
+    emps = await db.employees.find({}, {"_id": 0}).to_list(1000)
+    rows = []
+    for e in emps:
+        m = await employee_stats(e["id"])
+        cur, _ = level_for(m["total_points"])
+        badges = [b for b in earned_badges(m) if b["earned"]]
+        rows.append({"employee_id": e["id"], "name": e["name"], "department": e.get("department"),
+                     "avatar": e.get("avatar"), "points": m["total_points"], "level": cur["level"],
+                     "level_name": cur["name"], "badge_count": len(badges), "streak": m["streak"]})
+    rows.sort(key=lambda x: -x["points"])
+    for i, r in enumerate(rows):
+        r["rank"] = i + 1
+    return rows
+
+
+@api_router.get("/gami/profile")
+async def gami_profile(employee_id: str):
+    emp = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not emp:
+        raise HTTPException(404, "Çalışan bulunamadı")
+    m = await employee_stats(employee_id)
+    cur, nxt = level_for(m["total_points"])
+    if nxt:
+        span = nxt["min"] - cur["min"]
+        progress = round(100 * (m["total_points"] - cur["min"]) / span) if span else 100
+        to_next = nxt["min"] - m["total_points"]
+    else:
+        progress, to_next = 100, 0
+    ledger = await db.points_ledger.find({"employee_id": employee_id}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    lb = await gami_leaderboard()
+    rank = next((r["rank"] for r in lb if r["employee_id"] == employee_id), None)
+    return {
+        "employee": {"id": emp["id"], "name": emp["name"], "department": emp.get("department"), "avatar": emp.get("avatar")},
+        "metrics": m, "level": cur, "next_level": nxt, "progress": progress, "to_next": to_next,
+        "badges": earned_badges(m), "history": ledger, "rank": rank, "total_people": len(lb),
+    }
+
+
+# ---- Kudos ----
+@api_router.post("/kudos")
+async def create_kudos(p: KudosCreate):
+    if p.from_id == p.to_id:
+        raise HTTPException(400, "Kendine kudos veremezsin")
+    cfg = await gami_config()
+    if not any(v["key"] == p.value for v in cfg["kudos_values"]):
+        raise HTTPException(400, "Geçersiz değer")
+    status = "pending" if cfg.get("kudos_moderation") else "published"
+    doc = {"id": new_id(), "from_id": p.from_id, "to_id": p.to_id, "value": p.value,
+           "message": p.message, "status": status, "created_at": now_iso()}
+    await db.kudos.insert_one(doc)
+    if status == "published":
+        await award_points(p.to_id, cfg["points"]["kudos_received"], "kudos_received", doc["id"])
+        await award_points(p.from_id, cfg["points"]["kudos_given"], "kudos_given", doc["id"])
+    return {**clean(doc), "moderated": status == "pending"}
+
+
+@api_router.get("/kudos/feed")
+async def kudos_feed():
+    cfg = await gami_config()
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    items = await db.kudos.find({"status": "published"}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return [_kudos_out(k, emps, cfg["kudos_values"]) for k in items]
+
+
+@api_router.get("/kudos/mine")
+async def kudos_mine(employee_id: str):
+    cfg = await gami_config()
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    received = await db.kudos.find({"to_id": employee_id, "status": "published"}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    given = await db.kudos.find({"from_id": employee_id}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return {"received": [_kudos_out(k, emps, cfg["kudos_values"]) for k in received],
+            "given": [_kudos_out(k, emps, cfg["kudos_values"]) for k in given]}
+
+
+@api_router.get("/kudos/pending")
+async def kudos_pending():
+    cfg = await gami_config()
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    items = await db.kudos.find({"status": "pending"}, {"_id": 0}).sort("created_at", 1).to_list(1000)
+    return [_kudos_out(k, emps, cfg["kudos_values"]) for k in items]
+
+
+@api_router.post("/kudos/{kid}/approve")
+async def kudos_approve(kid: str):
+    k = await db.kudos.find_one({"id": kid}, {"_id": 0})
+    if not k:
+        raise HTTPException(404, "Kudos bulunamadı")
+    if k["status"] != "published":
+        cfg = await gami_config()
+        await db.kudos.update_one({"id": kid}, {"$set": {"status": "published"}})
+        await award_points(k["to_id"], cfg["points"]["kudos_received"], "kudos_received", kid)
+        await award_points(k["from_id"], cfg["points"]["kudos_given"], "kudos_given", kid)
+    return {"ok": True}
+
+
+@api_router.post("/kudos/{kid}/reject")
+async def kudos_reject(kid: str):
+    await db.kudos.update_one({"id": kid}, {"$set": {"status": "rejected"}})
+    return {"ok": True}
+
+
+@api_router.delete("/kudos/{kid}")
+async def kudos_delete(kid: str):
+    await db.kudos.delete_one({"id": kid})
+    await db.points_ledger.delete_many({"ref_id": kid})
+    return {"ok": True}
+
+
+# ---- Oyun (Quiz) ----
+@api_router.get("/games")
+async def games_list():
+    items = await db.games.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for g in items:
+        g["play_count"] = await db.game_plays.count_documents({"game_id": g["id"], "finished": True})
+        g["question_count"] = len(g.get("questions", []))
+    return items
+
+
+@api_router.post("/games")
+async def game_create(p: GameCreate):
+    if len(p.questions) < 1:
+        raise HTTPException(400, "En az 1 soru gerekli")
+    data = p.model_dump()
+    data["questions"] = [{"id": q.get("id") or new_id(), **{k: v for k, v in q.items() if k != "id"}} for q in data["questions"]]
+    doc = {"id": new_id(), **data, "created_at": now_iso(), "updated_at": now_iso()}
+    await db.games.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.put("/games/{gid}")
+async def game_update(gid: str, p: GameUpdate):
+    update = {k: v for k, v in p.model_dump(exclude_none=True).items()}
+    if "questions" in update:
+        update["questions"] = [{"id": q.get("id") or new_id(), **{k: v for k, v in q.items() if k != "id"}} for q in update["questions"]]
+    update["updated_at"] = now_iso()
+    res = await db.games.update_one({"id": gid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Oyun bulunamadı")
+    return await db.games.find_one({"id": gid}, {"_id": 0})
+
+
+@api_router.delete("/games/{gid}")
+async def game_delete(gid: str):
+    await db.games.delete_one({"id": gid})
+    await db.game_plays.delete_many({"game_id": gid})
+    return {"ok": True}
+
+
+@api_router.get("/games/feed")
+async def games_feed(employee_id: str):
+    items = await db.games.find({"status": "active"}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    result = []
+    for g in items:
+        play = await db.game_plays.find_one({"game_id": g["id"], "employee_id": employee_id, "finished": True}, {"_id": 0})
+        result.append({
+            "id": g["id"], "title": g["title"], "description": g.get("description", ""),
+            "question_count": len(g.get("questions", [])), "time_limit": g.get("time_limit", 20),
+            "is_tournament": g.get("is_tournament", False), "period": g.get("period"),
+            "played": bool(play), "my_score": play["score"] if play else None,
+            "my_correct": play["correct_count"] if play else None,
+        })
+    return result
+
+
+@api_router.get("/games/{gid}/play")
+async def game_play_data(gid: str, employee_id: str):
+    game = await db.games.find_one({"id": gid}, {"_id": 0})
+    if not game:
+        raise HTTPException(404, "Oyun bulunamadı")
+    played = await db.game_plays.find_one({"game_id": gid, "employee_id": employee_id, "finished": True}, {"_id": 0})
+    qs = [{"id": q["id"], "text": q["text"], "options": q["options"]} for q in game.get("questions", [])]
+    return {"id": game["id"], "title": game["title"], "description": game.get("description", ""),
+            "time_limit": game.get("time_limit", 20), "questions": qs,
+            "already_played": bool(played), "my_result": played}
+
+
+@api_router.post("/games/{gid}/play")
+async def play_game(gid: str, p: GamePlay):
+    game = await db.games.find_one({"id": gid}, {"_id": 0})
+    if not game:
+        raise HTTPException(404, "Oyun bulunamadı")
+    if await db.game_plays.find_one({"game_id": gid, "employee_id": p.employee_id, "finished": True}):
+        raise HTTPException(400, "Bu oyunu zaten oynadın")
+    qs = game.get("questions", [])
+    correct = sum(1 for i, q in enumerate(qs) if i < len(p.answers) and p.answers[i] == q["correct_index"])
+    cfg = await gami_config()
+    pts = correct * cfg["points"]["game_correct"]
+    perfect = correct == len(qs) and len(qs) > 0
+    if perfect:
+        pts += cfg["points"]["game_perfect"]
+    await db.game_plays.insert_one({
+        "id": new_id(), "game_id": gid, "employee_id": p.employee_id, "answers": p.answers,
+        "correct_count": correct, "total": len(qs), "score": pts, "perfect": perfect,
+        "finished": True, "played_at": now_iso(),
+    })
+    await award_points(p.employee_id, pts, "game", gid, f"{game['title']} · {correct}/{len(qs)} doğru")
+    return {"correct_count": correct, "total": len(qs), "score": pts, "perfect": perfect,
+            "correct_indexes": [q["correct_index"] for q in qs]}
+
+
+@api_router.get("/games/{gid}/leaderboard")
+async def game_leaderboard(gid: str):
+    emps = {e["id"]: e for e in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    plays = await db.game_plays.find({"game_id": gid, "finished": True}, {"_id": 0}).to_list(10000)
+    plays.sort(key=lambda x: (-x["score"], x["played_at"]))
+    rows = []
+    for i, pl in enumerate(plays):
+        e = emps.get(pl["employee_id"], {})
+        rows.append({"rank": i + 1, "employee_id": pl["employee_id"], "name": e.get("name"),
+                     "avatar": e.get("avatar"), "score": pl["score"], "correct": pl["correct_count"],
+                     "total": pl["total"], "perfect": pl.get("perfect", False)})
+    return rows
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -2452,6 +2875,7 @@ async def on_startup():
     await seed_phase2_cats()
     await seed_phase3a_cats()
     await seed_phase3b_cats()
+    await seed_phase4()
 
 
 @app.on_event("shutdown")

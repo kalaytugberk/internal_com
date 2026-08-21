@@ -16,7 +16,10 @@ import { IsgRamakManager } from "@/pages/isgramak/IsgRamak";
 import { RoomsManager } from "@/pages/rooms/MeetingRooms";
 import { EnlerManager } from "@/pages/enler/Enler";
 import { KutlamaManager } from "@/pages/kutlama/Kutlama";
-import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile, Tag, Sparkles, Bus, Bell, ShieldAlert, Lightbulb, Percent, Utensils, AlertTriangle, DoorOpen, Star, PartyPopper } from "lucide-react";
+import { KudosManager } from "@/pages/gamification/Kudos";
+import { RozetManager } from "@/pages/gamification/Gamification";
+import { GamesManager } from "@/pages/gamification/Games";
+import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile, Tag, Sparkles, Bus, Bell, ShieldAlert, Lightbulb, Percent, Utensils, AlertTriangle, DoorOpen, Star, PartyPopper, Award, Trophy, Gamepad2 } from "lucide-react";
 
 const TABS = [
   { key: "categories", label: "Kategori Yönetimi", icon: Layers },
@@ -36,6 +39,9 @@ const TABS = [
   { key: "rooms", label: "Toplantı Odası", icon: DoorOpen },
   { key: "enler", label: "Şirketin Enleri", icon: Star },
   { key: "kutlama", label: "Kutlama", icon: PartyPopper },
+  { key: "kudos", label: "Kudos", icon: Award },
+  { key: "rozet", label: "Rozet / Oyunlaştırma", icon: Trophy },
+  { key: "oyun", label: "Oyun", icon: Gamepad2 },
 ];
 
 export const AdminPanel = () => {
@@ -82,6 +88,9 @@ export const AdminPanel = () => {
       {tab === "rooms" && <RoomsManager />}
       {tab === "enler" && <EnlerManager />}
       {tab === "kutlama" && <KutlamaManager />}
+      {tab === "kudos" && <KudosManager />}
+      {tab === "rozet" && <RozetManager />}
+      {tab === "oyun" && <GamesManager />}
     </div>
   );
 };

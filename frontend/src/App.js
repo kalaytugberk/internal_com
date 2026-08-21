@@ -25,6 +25,9 @@ import { IsgRamakPage } from "@/pages/isgramak/IsgRamak";
 import { RoomsPage } from "@/pages/rooms/MeetingRooms";
 import { EnlerPage } from "@/pages/enler/Enler";
 import { KutlamaPage } from "@/pages/kutlama/Kutlama";
+import { KudosPage } from "@/pages/gamification/Kudos";
+import { GamificationPage } from "@/pages/gamification/Gamification";
+import { GamesFeed, GamePlay } from "@/pages/gamification/Games";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import { MoodReminderBanner } from "@/components/MoodReminderBanner";
 import { AdminPanel } from "@/pages/admin/AdminPanel";
@@ -69,6 +72,10 @@ function App() {
               <Route path="/ic-iletisim/toplanti" element={<RoomsPage />} />
               <Route path="/ic-iletisim/enler" element={<EnlerPage />} />
               <Route path="/ic-iletisim/kutlama" element={<KutlamaPage />} />
+              <Route path="/ic-iletisim/kudos" element={<KudosPage />} />
+              <Route path="/ic-iletisim/rozet" element={<GamificationPage />} />
+              <Route path="/ic-iletisim/oyun" element={<GamesFeed />} />
+              <Route path="/ic-iletisim/oyun/:id" element={<GamePlay />} />
               <Route path="/ik" element={<AdminRoute><HRPage /></AdminRoute>} />
               <Route path="/takvim" element={<CalendarPage />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />

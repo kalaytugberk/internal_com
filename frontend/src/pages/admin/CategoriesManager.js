@@ -69,12 +69,14 @@ const CATALOG = {
   toplanti_odasi: { tab: "rooms", desc: "Toplantı odası tanımları ve rezervasyonlar." },
   sirket_enleri: { tab: "enler", desc: "Ödül başlıkları ve kazanan galerisi." },
   kutlama: { tab: "kutlama", desc: "Otomatik doğum günü/kıdem kutlamaları ve şablonlar." },
+  kudos: { tab: "kudos", desc: "Takdir değerleri, moderasyon ve puanlar." },
+  rozet: { tab: "rozet", desc: "Puan ekonomisi, rozetler ve liderlik tablosu." },
+  oyun: { tab: "oyun", desc: "Quiz oyunları, soru havuzu ve turnuvalar." },
 };
 
 // Henüz yapılmamış kategoriler (yakında)
 const FUTURE_CATALOG = [
-  { key: "kudos", label: "Kudos", desc: "Takdir ve teşekkür kuralları.", icon: "Award" },
-  { key: "rozet", label: "Rozet / oyunlaştırma", desc: "Puan kaynakları ve rozet kriterleri.", icon: "Trophy" },
+  { key: "topluluk", label: "Topluluk", desc: "Sohbet ve tartışma alanları.", icon: "Users" },
 ];
 
 const blankCategory = () => ({
