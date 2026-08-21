@@ -45,6 +45,8 @@ export const InternalComms = () => {
     else if (cat.category_type === "ilan") navigate("/ic-iletisim/ilanlar");
     else if (cat.category_type === "avatar") navigate("/ic-iletisim/avatar");
     else if (cat.category_type === "servis") navigate("/ic-iletisim/servis");
+    else if (cat.category_type === "anlik_bildirim") navigate("/ic-iletisim/anlik");
+    else if (cat.category_type === "isg_acil") navigate("/ic-iletisim/isg-acil");
   };
 
   return (

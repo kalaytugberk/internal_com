@@ -8,7 +8,8 @@ import { MoodSettings } from "@/pages/mood/MoodSettings";
 import { ListingsManager } from "@/pages/listings/ListingsManager";
 import { AvatarConcepts } from "@/pages/avatar/AvatarConcepts";
 import { RoutesManager } from "@/pages/routes/RoutesManager";
-import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile, Tag, Sparkles, Bus } from "lucide-react";
+import { NotificationsManager } from "@/pages/notifications/NotificationsManager";
+import { Layers, Megaphone, ChevronLeft, Activity, CalendarDays, Smile, Tag, Sparkles, Bus, Bell, ShieldAlert } from "lucide-react";
 
 const TABS = [
   { key: "categories", label: "Kategori Yönetimi", icon: Layers },
@@ -19,6 +20,8 @@ const TABS = [
   { key: "listings", label: "İlanlar", icon: Tag },
   { key: "avatar", label: "Avatar Seçimi", icon: Sparkles },
   { key: "routes", label: "Servis Güzergahı", icon: Bus },
+  { key: "anlik", label: "Anlık Bildirim", icon: Bell },
+  { key: "isg", label: "İSG — Acil Durum", icon: ShieldAlert },
 ];
 
 export const AdminPanel = () => {
@@ -56,6 +59,8 @@ export const AdminPanel = () => {
       {tab === "listings" && <ListingsManager />}
       {tab === "avatar" && <AvatarConcepts />}
       {tab === "routes" && <RoutesManager />}
+      {tab === "anlik" && <NotificationsManager kind="anlik_bildirim" />}
+      {tab === "isg" && <NotificationsManager kind="isg_acil" isg />}
     </div>
   );
 };

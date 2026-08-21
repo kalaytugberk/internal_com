@@ -17,6 +17,8 @@ import { MoodPage } from "@/pages/mood/MoodPage";
 import { ListingsFeed, ListingCreate, ListingDetail } from "@/pages/listings/Listings";
 import { AvatarPage } from "@/pages/avatar/AvatarPage";
 import { RoutesFeed, RouteDetail } from "@/pages/routes/Routes";
+import { NotificationsPage } from "@/pages/notifications/NotificationsPage";
+import { NotificationBanner } from "@/components/NotificationBanner";
 import { MoodReminderBanner } from "@/components/MoodReminderBanner";
 import { AdminPanel } from "@/pages/admin/AdminPanel";
 
@@ -33,6 +35,7 @@ function App() {
           <Shell>
             <MandatoryPulseBanner />
             <MoodReminderBanner />
+            <NotificationBanner />
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/takim" element={<Placeholder title="Takım" subtitle="Takımınıza ait bilgiler." icon="Users" accent="bg-emerald-50 text-emerald-500" />} />
@@ -50,6 +53,8 @@ function App() {
               <Route path="/ic-iletisim/avatar" element={<AvatarPage />} />
               <Route path="/ic-iletisim/servis" element={<RoutesFeed />} />
               <Route path="/ic-iletisim/servis/:id" element={<RouteDetail />} />
+              <Route path="/ic-iletisim/anlik" element={<NotificationsPage kind="anlik_bildirim" />} />
+              <Route path="/ic-iletisim/isg-acil" element={<NotificationsPage kind="isg_acil" />} />
               <Route path="/ik" element={<AdminRoute><HRPage /></AdminRoute>} />
               <Route path="/takvim" element={<CalendarPage />} />
               <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />

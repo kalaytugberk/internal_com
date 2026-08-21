@@ -60,12 +60,12 @@ const CATALOG = {
   ilan: { tab: "listings", desc: "Çalışan ilanlarını buradan onaylayabilirsiniz." },
   avatar: { tab: "avatar", desc: "Avatar konseptlerini buradan yönetebilirsiniz." },
   servis: { tab: "routes", desc: "Servis seferlerini buradan tanımlayabilirsiniz." },
+  anlik_bildirim: { tab: "anlik", desc: "Anlık bildirim gönder ve yanıtları takip et." },
+  isg_acil: { tab: "isg", desc: "Acil durum bildirimi ve gerçek zamanlı yanıt takibi." },
 };
 
 // Henüz yapılmamış kategoriler (yakında)
 const FUTURE_CATALOG = [
-  { key: "isg", label: "İSG", desc: "Acil durum ve ramak kala bildirimleri.", icon: "ShieldAlert" },
-  { key: "anlik_bildirim", label: "Anlık bildirim", desc: "Hızlı geri bildirim toplama bildirimleri.", icon: "Bell" },
   { key: "hap_bilgi", label: "Hap bilgi", desc: "Konu bazlı kısa bilgilendirmeler.", icon: "Lightbulb" },
   { key: "kudos", label: "Kudos", desc: "Takdir ve teşekkür kuralları.", icon: "Award" },
   { key: "rozet", label: "Rozet / oyunlaştırma", desc: "Puan kaynakları ve rozet kriterleri.", icon: "Trophy" },

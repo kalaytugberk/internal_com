@@ -98,4 +98,11 @@ export const api = {
   updateAudience: (id, d) => http.put(`/audiences/${id}`, d).then((r) => r.data),
   deleteAudience: (id) => http.delete(`/audiences/${id}`).then((r) => r.data),
   previewAudience: (d) => http.post("/audiences/preview", d).then((r) => r.data),
+
+  notifications: (kind) => http.get("/notifications", { params: { kind } }).then((r) => r.data),
+  createNotification: (d) => http.post("/notifications", d).then((r) => r.data),
+  notificationsFeed: (employeeId) => http.get("/notifications/feed", { params: { employee_id: employeeId } }).then((r) => r.data),
+  respondNotification: (id, d) => http.post(`/notifications/${id}/respond`, d).then((r) => r.data),
+  notificationReport: (id) => http.get(`/notifications/${id}/report`).then((r) => r.data),
+  deleteNotification: (id) => http.delete(`/notifications/${id}`).then((r) => r.data),
 };

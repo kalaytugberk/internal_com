@@ -1668,6 +1668,127 @@ async def delete_audience(aid: str):
     return {"ok": True}
 
 
+# ----------------------------- Bildirim Motoru (Anlık Bildirim + İSG Acil) -----------------------------
+
+class NotifOption(BaseModel):
+    key: str
+    label: str
+
+
+class NotificationCreate(BaseModel):
+    kind: str = "anlik_bildirim"       # anlik_bildirim | isg_acil
+    title: str = ""
+    message: str
+    channels: List[str] = []           # sms | push | mail (MOCK — gerçek gönderim yok)
+    audience: Dict[str, Any] = Field(default_factory=lambda: {"all": True})
+    options: List[NotifOption]         # tam 2 seçenek
+    reminder_enabled: bool = False
+    reminder_minutes: int = 15
+
+
+class NotifRespond(BaseModel):
+    employee_id: str
+    option_key: str
+
+
+async def seed_notification_cats():
+    for kind, name, icon in [("anlik_bildirim", "Anlık Bildirim", "Bell"), ("isg_acil", "İSG — Acil Durum", "ShieldAlert")]:
+        if await db.categories.count_documents({"category_type": kind}) == 0:
+            cnt = await db.categories.count_documents({})
+            await db.categories.insert_one({
+                "id": new_id(), "category_type": kind, "display_name": name, "icon": icon,
+                "icon_image": None, "status": "active", "audience": Audience().model_dump(),
+                "reporting_levels": ["sirket", "organizasyon"], "content_type": "eylem",
+                "pinnable": False, "order": cnt, "created_at": now_iso(),
+            })
+
+
+def _notif_counts(resps, options):
+    c = {o["key"]: 0 for o in options}
+    for r in resps:
+        if r["option_key"] in c:
+            c[r["option_key"]] += 1
+    return c
+
+
+@api_router.get("/notifications")
+async def list_notifications(kind: str):
+    items = await db.notifications.find({"kind": kind}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for n in items:
+        resps = await db.notification_responses.find({"notification_id": n["id"]}, {"_id": 0}).to_list(10000)
+        n["counts"] = _notif_counts(resps, n["options"])
+        n["responded"] = len(resps)
+    return items
+
+
+@api_router.post("/notifications")
+async def create_notification(payload: NotificationCreate):
+    if len(payload.options) != 2:
+        raise HTTPException(400, "Tam 2 yanıt seçeneği gereklidir")
+    cat = await db.categories.find_one({"category_type": payload.kind}, {"_id": 0})
+    doc = {"id": new_id(), "category_id": cat["id"] if cat else None, **payload.model_dump(), "created_at": now_iso()}
+    await db.notifications.insert_one(doc)
+    return clean(doc)
+
+
+@api_router.get("/notifications/feed")
+async def notifications_feed(employee_id: str):
+    emp = await db.employees.find_one({"id": employee_id}, {"_id": 0})
+    if not emp:
+        raise HTTPException(404, "Çalışan bulunamadı")
+    items = await db.notifications.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    result = []
+    for n in items:
+        if not employee_matches(emp, n.get("audience")):
+            continue
+        mine = await db.notification_responses.find_one({"notification_id": n["id"], "employee_id": employee_id}, {"_id": 0})
+        n["my_response"] = mine["option_key"] if mine else None
+        result.append(n)
+    return result
+
+
+@api_router.post("/notifications/{nid}/respond")
+async def respond_notification(nid: str, payload: NotifRespond):
+    n = await db.notifications.find_one({"id": nid}, {"_id": 0})
+    if not n:
+        raise HTTPException(404, "Bildirim bulunamadı")
+    if not any(o["key"] == payload.option_key for o in n["options"]):
+        raise HTTPException(400, "Geçersiz seçenek")
+    if await db.notification_responses.find_one({"notification_id": nid, "employee_id": payload.employee_id}):
+        raise HTTPException(400, "Zaten yanıtladınız")
+    await db.notification_responses.insert_one({
+        "id": new_id(), "notification_id": nid, "employee_id": payload.employee_id,
+        "option_key": payload.option_key, "responded_at": now_iso(),
+    })
+    return {"ok": True, "my_response": payload.option_key}
+
+
+@api_router.get("/notifications/{nid}/report")
+async def notification_report(nid: str):
+    n = await db.notifications.find_one({"id": nid}, {"_id": 0})
+    if not n:
+        raise HTTPException(404, "Bildirim bulunamadı")
+    emps = await db.employees.find({}, {"_id": 0}).to_list(1000)
+    target = [e for e in emps if employee_matches(e, n.get("audience"))]
+    resps = await db.notification_responses.find({"notification_id": nid}, {"_id": 0}).to_list(10000)
+    rmap = {r["employee_id"]: r["option_key"] for r in resps}
+    responded = [{"id": e["id"], "name": e["name"], "department": e.get("department"), "option": rmap[e["id"]]} for e in target if e["id"] in rmap]
+    not_responded = [{"id": e["id"], "name": e["name"], "department": e.get("department")} for e in target if e["id"] not in rmap]
+    return {
+        "notification": n, "counts": _notif_counts(resps, n["options"]), "options": n["options"],
+        "target_count": len(target), "responded_count": len(responded),
+        "response_rate": round(100 * len(responded) / len(target)) if target else 0,
+        "responded": responded, "not_responded": not_responded,
+    }
+
+
+@api_router.delete("/notifications/{nid}")
+async def delete_notification(nid: str):
+    await db.notifications.delete_one({"id": nid})
+    await db.notification_responses.delete_many({"notification_id": nid})
+    return {"ok": True}
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -1692,6 +1813,7 @@ async def on_startup():
     await seed_avatars_if_empty()
     await seed_routes_if_empty()
     await seed_audiences_if_empty()
+    await seed_notification_cats()
 
 
 @app.on_event("shutdown")

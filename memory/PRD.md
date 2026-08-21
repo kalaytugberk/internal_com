@@ -28,7 +28,7 @@ Plena (İK/HR SaaS) için "İç İletişim" modülü. 20+ içerik kategorisini t
 5. İç İletişim ana ekranı (grid + genişletilmiş Duyuru kartı + Öne Çıkanlar pin şeridi)
 
 ## Implemented (2026-08-14)
-- ✅ Tüm 5 çekirdek gereksinim uçtan uca çalışır (testing agent: backend 100%, frontend 100%)
+- ✅ **Faz 1 — Bildirim Motoru** (2026-08-21): Paylaşılan "2 özel yanıt seçenekli bildirim + takip" motoru. **Anlık Bildirim (7.6)** ve **İSG — Acil Durum (7.10)** kategorileri. Admin/İK doğrudan gönderir (onay yok): mesaj, kanal (SMS/Push/Mail — GÖNDERİM MOCK), hedef kitle (AudiencePicker), bildirim bazında 2 özel yanıt seçeneği; İSG'de opsiyonel otomatik hatırlatma. Çalışan: öncelikli kesinti banner'ı (İSG kırmızı ve öncelikli, Anlık mavi), 2 buton ile yanıt → kilitlenir; ayrıca geçmiş sayfası. Rapor: yanıt oranı %, seçenek dağılımı, kim yanıtladı/yanıtlamadı. Koleksiyonlar: `notifications`, `notification_responses`. Testing (iteration_13): backend 7/7, frontend %100.- ✅ Tüm 5 çekirdek gereksinim uçtan uca çalışır (testing agent: backend 100%, frontend 100%)
 - ✅ 8 mock çalışan, 1 kategori (Duyurular), 3 alt kategori, 4 örnek duyuru seed
 - ✅ Onay akışı, pinleme, hedef kitle filtreli çalışan akışı doğrulandı
 - ✅ İK sayfası (kart grid) eklendi; "İç İletişim Platformu" kartı modüle giriş yapar; İK sekmesi yalnızca admin'e görünür
