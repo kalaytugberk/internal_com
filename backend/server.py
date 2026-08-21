@@ -3249,6 +3249,21 @@ async def notifications_inbox(employee_id: str):
         items.append({"id": "un:" + n["id"], "icon": "MessageSquare" if n.get("kind") == "comment" else "MessagesSquare",
                       "text": n.get("text"), "sub": n.get("community_name"),
                       "link": f"/ic-iletisim/topluluk/{n.get('community_id')}", "created_at": n["created_at"]})
+    emp = emps.get(employee_id)
+    if emp:
+        for n in await db.notifications.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000):
+            if not employee_matches(emp, n.get("audience")):
+                continue
+            if await db.notification_responses.find_one({"notification_id": n["id"], "employee_id": employee_id}):
+                continue
+            if await db.notif_seen.find_one({"notification_id": n["id"], "employee_id": employee_id}):
+                continue
+            is_acil = n.get("kind") == "isg_acil"
+            title = n.get("title") or ("Acil Durum" if is_acil else "Anlık Bildirim")
+            items.append({"id": "notif:" + n["id"], "icon": "ShieldAlert" if is_acil else "Bell",
+                          "text": f"{title}: {n.get('message', '')[:60]}", "sub": "Yanıt bekleniyor",
+                          "link": "/ic-iletisim/isg-acil" if is_acil else "/ic-iletisim/anlik",
+                          "created_at": n["created_at"]})
     items.sort(key=lambda x: x["created_at"], reverse=True)
     return {"count": len(items), "items": items}
 
@@ -3257,6 +3272,13 @@ async def notifications_inbox(employee_id: str):
 async def notifications_inbox_seen(p: LikePayload):
     await db.kudos.update_many({"to_id": p.employee_id, "status": "published"}, {"$set": {"seen_by_recipient": True}})
     await db.user_notifications.update_many({"employee_id": p.employee_id}, {"$set": {"seen": True}})
+    emp = await db.employees.find_one({"id": p.employee_id}, {"_id": 0})
+    if emp:
+        for n in await db.notifications.find({}, {"_id": 0}).to_list(1000):
+            if employee_matches(emp, n.get("audience")):
+                await db.notif_seen.update_one(
+                    {"employee_id": p.employee_id, "notification_id": n["id"]},
+                    {"$set": {"employee_id": p.employee_id, "notification_id": n["id"]}}, upsert=True)
     return {"ok": True}
 
 

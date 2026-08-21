@@ -15,6 +15,7 @@ export const ProfilePage = () => {
   const { currentEmployeeId } = useApp();
   const targetId = id || currentEmployeeId;
   const [p, setP] = useState(null);
+  const [af, setAf] = useState("all");
 
   useEffect(() => { setP(null); if (targetId) api.profile(targetId).then(setP); }, [targetId]);
 
@@ -24,6 +25,7 @@ export const ProfilePage = () => {
   const e = p.employee;
   const earned = p.badges.filter((b) => b.earned).length;
   const isOwn = !id || id === currentEmployeeId;
+  const acts = (p.activity || []).filter((a) => af === "all" || a.type === af);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8" data-testid="profile-page">
@@ -106,15 +108,24 @@ export const ProfilePage = () => {
 
       {p.activity?.length > 0 && (
         <div className="mt-6">
-          <h3 className="font-heading font-semibold text-slate-700 mb-3 flex items-center gap-2"><Clock className="w-5 h-5 text-slate-400" /> Son Aktiviteler</h3>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 className="font-heading font-semibold text-slate-700 flex items-center gap-2"><Clock className="w-5 h-5 text-slate-400" /> Son Aktiviteler</h3>
+            <div className="flex gap-1 bg-slate-100 rounded-full p-1">
+              {[["all", "Tümü"], ["kudos", "Kudos"], ["game", "Oyun"], ["poll", "Anket"]].map(([k, l]) => (
+                <button key={k} data-testid={`activity-filter-${k}`} onClick={() => setAf(k)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${af === k ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>{l}</button>
+              ))}
+            </div>
+          </div>
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-50">
-            {p.activity.map((a, i) => (
+            {acts.map((a, i) => (
               <div key={i} data-testid={`activity-${i}`} className="flex items-start gap-3 p-3.5">
                 <div className="w-8 h-8 rounded-full bg-slate-50 text-slate-500 grid place-items-center shrink-0"><Icon name={a.icon} className="w-4 h-4" /></div>
                 <div className="flex-1 min-w-0"><p className="text-sm text-slate-700">{a.text}</p>{a.sub && <p className="text-xs text-slate-400 mt-0.5 truncate">{a.sub}</p>}</div>
                 <span className="text-[11px] text-slate-400 shrink-0">{fmtDate(a.date)}</span>
               </div>
             ))}
+            {acts.length === 0 && <div className="p-6 text-center text-sm text-slate-400">Bu türde aktivite yok.</div>}
           </div>
         </div>
       )}
