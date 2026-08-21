@@ -9,10 +9,44 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, GripVertical, Pencil, Trash2, Layers, ChevronRight } from "lucide-react";
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import { Plus, Pencil, Trash2, Layers } from "lucide-react";
 import { toast } from "sonner";
+
+// Pastel katalog — kartlar sırayla bu paletten renk alır
+const PASTELS = [
+  { bg: "bg-emerald-50", border: "border-emerald-100/80" },
+  { bg: "bg-sky-50", border: "border-sky-100/80" },
+  { bg: "bg-amber-50", border: "border-amber-100/80" },
+  { bg: "bg-rose-50", border: "border-rose-100/80" },
+  { bg: "bg-orange-50", border: "border-orange-100/80" },
+  { bg: "bg-violet-50", border: "border-violet-100/80" },
+];
+
+// Aktif kategori tipi -> admin yönetim sekmesi + açıklama
+const CATALOG = {
+  duyuru: { tab: "announcements", desc: "Şirket içi duyuruları buradan yönetebilirsiniz." },
+  pulse: { tab: "pulse", desc: "Nabız anketlerini buradan yönetebilirsiniz." },
+  etkinlik: { tab: "events", desc: "Şirket etkinliklerini buradan yönetebilirsiniz." },
+  gunluk_mod: { tab: "mood", desc: "Çalışan hislerini buradan izleyebilirsiniz." },
+  ilan: { tab: "listings", desc: "Çalışan ilanlarını buradan onaylayabilirsiniz." },
+  avatar: { tab: "avatar", desc: "Avatar konseptlerini buradan yönetebilirsiniz." },
+  servis: { tab: "routes", desc: "Servis seferlerini buradan tanımlayabilirsiniz." },
+};
+
+// Henüz yapılmamış kategoriler (yakında)
+const FUTURE_CATALOG = [
+  { key: "isg", label: "İSG", desc: "Acil durum ve ramak kala bildirimleri." },
+  { key: "anlik_bildirim", label: "Anlık bildirim", desc: "Hızlı geri bildirim toplama bildirimleri." },
+  { key: "hap_bilgi", label: "Hap bilgi", desc: "Konu bazlı kısa bilgilendirmeler." },
+  { key: "kudos", label: "Kudos", desc: "Takdir ve teşekkür kuralları." },
+  { key: "rozet", label: "Rozet / oyunlaştırma", desc: "Puan kaynakları ve rozet kriterleri." },
+  { key: "indirim", label: "İndirim & ayrıcalıklar", desc: "Çalışan indirimlerini buradan girin." },
+  { key: "toplanti_odasi", label: "Toplantı odası", desc: "Oda tanımları ve rezervasyon kuralları." },
+  { key: "sirket_enleri", label: "Şirketin enleri", desc: "Ayın çalışanı ve ödül başlıkları." },
+];
 
 const blankCategory = () => ({
   category_type: "duyuru", display_name: "", icon: "Megaphone", icon_image: null,
@@ -173,16 +207,15 @@ const SubcategoryPanel = ({ category }) => {
   );
 };
 
-export const CategoriesManager = () => {
+export const CategoriesManager = ({ onOpen }) => {
   const [categories, setCategories] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [expanded, setExpanded] = useState({});
   const [dragId, setDragId] = useState(null);
-  const [types, setTypes] = useState([]);
 
   const load = () => api.categories().then(setCategories);
-  useEffect(() => { load(); api.categoryTypes().then(setTypes); }, []);
+  useEffect(() => { load(); }, []);
 
   const save = async (form) => {
     if (form.id) {
@@ -206,12 +239,19 @@ export const CategoriesManager = () => {
     setCategories(updated);
   };
 
+  const openManager = (cat) => {
+    const meta = CATALOG[cat.category_type];
+    if (meta?.tab && onOpen) onOpen(meta.tab);
+    else { setEditing(cat); setDialogOpen(true); }
+  };
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h2 className="font-heading font-bold text-xl text-slate-800">Kategori Tanımlama</h2>
-          <p className="text-sm text-slate-500">Sürükle-bırak ile sırala, alt kategori ve hedef kitle yönet.</p>
+          <p className="text-xs text-slate-400 mb-1">İK / İç iletişim platformu</p>
+          <h2 className="font-heading font-bold text-2xl text-slate-800">Kategori Yönetimi</h2>
+          <p className="text-sm text-slate-500 mt-1">Sürükle-bırak ile sırala, kategoriye tıklayarak tanımlamaları ve raporlamayı yönet.</p>
         </div>
         <Button data-testid="add-category-btn" className="bg-blue-500 hover:bg-blue-600"
           onClick={() => { setEditing(blankCategory()); setDialogOpen(true); }}>
@@ -219,54 +259,76 @@ export const CategoriesManager = () => {
         </Button>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {types.map((t) => (
-          <span key={t.key} data-testid={`type-chip-${t.key}`}
-            className={["text-xs rounded-full px-3 py-1 border", t.active ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-slate-50 text-slate-400 border-slate-200"].join(" ")}>
-            {t.label}{!t.active && " · yakında"}
-          </span>
-        ))}
-      </div>
-
-      <div className="space-y-3">
-        {categories.map((cat) => (
-          <div
-            key={cat.id}
-            draggable
-            onDragStart={() => setDragId(cat.id)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => onDrop(cat.id)}
-            data-testid={`cat-row-${cat.id}`}
-            className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4"
-          >
-            <div className="flex items-center gap-3">
-              <GripVertical className="w-5 h-5 text-slate-300 cursor-grab shrink-0" />
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 grid place-items-center shrink-0">
-                {cat.icon_image ? <img src={cat.icon_image} alt="" className="w-5 h-5 object-contain" /> : <Icon name={cat.icon} className="w-5 h-5" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-heading font-semibold text-slate-800">{cat.display_name}</h3>
-                  <span className={["text-[11px] rounded-full px-2 py-0.5", cat.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"].join(" ")}>
-                    {cat.status === "active" ? "Aktif" : "Pasif"}
-                  </span>
-                  {cat.pinnable && <span className="text-[11px] rounded-full px-2 py-0.5 bg-amber-50 text-amber-600">Pinlenebilir</span>}
-                  <span className="text-[11px] rounded-full px-2 py-0.5 bg-slate-50 text-slate-500">{cat.content_type === "eylem" ? "Eylem Gerektiren" : "Bilgilendirme"}</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {categories.map((cat, i) => {
+          const p = PASTELS[i % PASTELS.length];
+          const meta = CATALOG[cat.category_type];
+          const desc = meta?.desc || `Hedef: ${audienceSummary(cat.audience)}`;
+          return (
+            <React.Fragment key={cat.id}>
+              <div
+                draggable
+                onDragStart={() => setDragId(cat.id)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => onDrop(cat.id)}
+                onClick={() => openManager(cat)}
+                data-testid={`cat-card-${cat.id}`}
+                className={`group relative cursor-pointer rounded-2xl border ${p.border} ${p.bg} p-6 min-h-[132px] transition-all hover:shadow-md hover:-translate-y-0.5`}
+              >
+                <div className="absolute top-3 right-3 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button data-testid={`cat-subs-${cat.id}`} title="Alt kategoriler"
+                    onClick={(e) => { e.stopPropagation(); setExpanded({ ...expanded, [cat.id]: !expanded[cat.id] }); }}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-white/70"><Layers className="w-4 h-4" /></button>
+                  <button data-testid={`cat-edit-${cat.id}`} title="Tanımı düzenle"
+                    onClick={(e) => { e.stopPropagation(); setEditing(cat); setDialogOpen(true); }}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-white/70"><Pencil className="w-4 h-4" /></button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button data-testid={`cat-del-${cat.id}`} title="Sil" onClick={(e) => e.stopPropagation()}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-white/70"><Trash2 className="w-4 h-4" /></button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="font-heading">Kategoriyi sil?</AlertDialogTitle>
+                        <AlertDialogDescription>"{cat.display_name}" kategorisi silinecek. Bu işlem geri alınamaz.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel data-testid={`cat-del-cancel-${cat.id}`}>İptal</AlertDialogCancel>
+                        <AlertDialogAction data-testid={`cat-del-confirm-${cat.id}`} className="bg-rose-500 hover:bg-rose-600"
+                          onClick={async () => { await api.deleteCategory(cat.id); load(); toast.success("Kategori silindi"); }}>Sil</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">Hedef: {audienceSummary(cat.audience)}</p>
+
+                <h3 className="font-heading font-bold text-slate-800 text-lg pr-16">{cat.display_name}</h3>
+                <p className="text-sm text-slate-500 mt-1.5">{desc}</p>
+                {cat.status !== "active" && (
+                  <span className="mt-3 inline-block text-[11px] rounded-full px-2 py-0.5 bg-white/70 text-slate-500">Pasif</span>
+                )}
               </div>
-              <button data-testid={`cat-expand-${cat.id}`} onClick={() => setExpanded({ ...expanded, [cat.id]: !expanded[cat.id] })}
-                className="p-2 text-slate-400 hover:text-blue-500 transition-colors">
-                <Layers className="w-4 h-4" />
-              </button>
-              <button data-testid={`cat-edit-${cat.id}`} onClick={() => { setEditing(cat); setDialogOpen(true); }}
-                className="p-2 text-slate-400 hover:text-blue-500 transition-colors"><Pencil className="w-4 h-4" /></button>
-              <button data-testid={`cat-del-${cat.id}`} onClick={async () => { await api.deleteCategory(cat.id); load(); }}
-                className="p-2 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+              {expanded[cat.id] && (
+                <div className="col-span-full rounded-2xl border border-slate-100 bg-white shadow-sm p-4" data-testid={`cat-subpanel-${cat.id}`}>
+                  <p className="text-sm font-heading font-semibold text-slate-700 mb-1">{cat.display_name} · Alt Kategoriler</p>
+                  <SubcategoryPanel category={cat} />
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+
+        {FUTURE_CATALOG.map((f, idx) => {
+          const p = PASTELS[(categories.length + idx) % PASTELS.length];
+          return (
+            <div key={f.key} data-testid={`cat-future-${f.key}`}
+              onClick={() => toast.info(`${f.label} · yakında eklenecek`)}
+              className={`relative cursor-pointer rounded-2xl border ${p.border} ${p.bg} p-6 min-h-[132px] transition-all hover:shadow-md hover:-translate-y-0.5`}>
+              <span className="absolute top-3 right-3 text-[10px] rounded-full px-2 py-0.5 bg-white/70 text-slate-500">Yakında</span>
+              <h3 className="font-heading font-bold text-slate-800 text-lg pr-16">{f.label}</h3>
+              <p className="text-sm text-slate-500 mt-1.5">{f.desc}</p>
             </div>
-            {expanded[cat.id] && <SubcategoryPanel category={cat} />}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <CategoryDialog open={dialogOpen} onOpenChange={setDialogOpen} initial={editing} onSave={save} />

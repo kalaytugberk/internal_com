@@ -48,7 +48,7 @@ export const AdminPanel = () => {
         })}
       </div>
 
-      {tab === "categories" && <CategoriesManager />}
+      {tab === "categories" && <CategoriesManager onOpen={setTab} />}
       {tab === "announcements" && <AnnouncementsManager />}
       {tab === "pulse" && <PulsesManager />}
       {tab === "events" && <EventsManager />}

@@ -45,6 +45,8 @@ Plena (İK/HR SaaS) için "İç İletişim" modülü. 20+ içerik kategorisini t
 
 - ✅ **Servis Güzergahı** (2026-08-14): 7. kategori tipi (`servis`). Admin: güzergah CRUD — ad, yön (gidiş/dönüş), lokasyon (şehir), araç/plaka, şoför (ad+telefon), sıralı duraklar (ad + saat + opsiyonel harita adresi). Çalışan: TÜM aktif güzergahları görür (şehir filtre chip'leri + güzergah/durak arama), detayda araç/şoför bilgisi + gömülü Google Maps iframe (anahtarsız, `output=embed`) + durak zaman çizelgesi; bir durağı seçip "Bu durağı kullanıyorum" ile kayıt olur/kaydı kaldırır. Admin raporu: güzergah bazında kayıt sayısı (bar) + durak bazında dağılım. Koleksiyonlar: `routes`, `route_registrations`. Testing (iteration_9): backend 9/9, frontend 100% E2E.
 
+- ✅ **Admin "Kategori Yönetimi" kart ızgarası** (2026-08-21): Admin paneli ilk sekmesi liste yerine mockup'a uygun pastel kart ızgarasına dönüştürüldü. 7 aktif kategori kartı (pastel katalogdan döngüsel renk) + 8 "Yakında" önizleme kartı (İSG, Anlık bildirim, Hap bilgi, Kudos, Rozet/oyunlaştırma, İndirim & ayrıcalıklar, Toplantı odası, Şirketin enleri). Karta tıklayınca ilgili yönetim sekmesi açılır (duyuru→announcements, pulse→pulse, etkinlik→events, gunluk_mod→mood, ilan→listings, avatar→avatar, servis→routes); "Yakında" kartına tıklayınca bilgi toast'ı, yönlendirme yok. Kart üstünde hover ikonları: tanım düzenle, alt kategoriler, sil (AlertDialog). Sürükle-bırak sıralama korunur. Testing (iteration_10): frontend 100%.
+
 ## Backlog / Remaining
 - P1: Diğer kategori tipleri (Etkinlik, Kudos, Oyunlaştırma, İlan...)
 - P1: Duyuru için raporlama ekranları
