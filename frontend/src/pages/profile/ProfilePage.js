@@ -3,9 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api } from "@/api";
 import { useApp } from "@/context/AppContext";
 import { Icon } from "@/lib/icons";
-import { ChevronLeft, Zap, Flame, Medal, Trophy, BadgeCheck, Bus, MapPin, Mail, Phone } from "lucide-react";
+import { ChevronLeft, Zap, Flame, Medal, Trophy, BadgeCheck, Bus, MapPin, Mail, Phone, Clock } from "lucide-react";
 
 const COLORS = { sky: "bg-sky-50 text-sky-600", violet: "bg-violet-50 text-violet-600", emerald: "bg-emerald-50 text-emerald-600", amber: "bg-amber-50 text-amber-600", rose: "bg-rose-50 text-rose-600", orange: "bg-orange-50 text-orange-600" };
+
+const fmtDate = (d) => { try { return new Date(d).toLocaleDateString("tr-TR", { day: "2-digit", month: "short" }); } catch (e) { return ""; } };
 
 export const ProfilePage = () => {
   const navigate = useNavigate();
@@ -101,6 +103,21 @@ export const ProfilePage = () => {
           ) : <p className="text-sm text-slate-400">Servis durağı seçilmemiş.{isOwn && <> <button onClick={() => navigate("/ic-iletisim/servis")} className="text-blue-600 hover:underline">Servis seç</button></>}</p>}
         </div>
       </div>
+
+      {p.activity?.length > 0 && (
+        <div className="mt-6">
+          <h3 className="font-heading font-semibold text-slate-700 mb-3 flex items-center gap-2"><Clock className="w-5 h-5 text-slate-400" /> Son Aktiviteler</h3>
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-50">
+            {p.activity.map((a, i) => (
+              <div key={i} data-testid={`activity-${i}`} className="flex items-start gap-3 p-3.5">
+                <div className="w-8 h-8 rounded-full bg-slate-50 text-slate-500 grid place-items-center shrink-0"><Icon name={a.icon} className="w-4 h-4" /></div>
+                <div className="flex-1 min-w-0"><p className="text-sm text-slate-700">{a.text}</p>{a.sub && <p className="text-xs text-slate-400 mt-0.5 truncate">{a.sub}</p>}</div>
+                <span className="text-[11px] text-slate-400 shrink-0">{fmtDate(a.date)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

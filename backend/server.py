@@ -3243,11 +3243,12 @@ async def notifications_inbox(employee_id: str):
         frm = emps.get(k["from_id"], {})
         items.append({"id": "kudos:" + k["id"], "icon": (v or {}).get("icon", "Award"),
                       "text": f"{frm.get('name')} sana {(v or {}).get('label', k['value'])} kudos'u verdi 🎉",
-                      "sub": k.get("message"), "created_at": k["created_at"]})
+                      "sub": k.get("message"), "link": "/ic-iletisim/kudos", "created_at": k["created_at"]})
     un = await db.user_notifications.find({"employee_id": employee_id, "seen": {"$ne": True}}, {"_id": 0}).to_list(200)
     for n in un:
         items.append({"id": "un:" + n["id"], "icon": "MessageSquare" if n.get("kind") == "comment" else "MessagesSquare",
-                      "text": n.get("text"), "sub": n.get("community_name"), "created_at": n["created_at"]})
+                      "text": n.get("text"), "sub": n.get("community_name"),
+                      "link": f"/ic-iletisim/topluluk/{n.get('community_id')}", "created_at": n["created_at"]})
     items.sort(key=lambda x: x["created_at"], reverse=True)
     return {"count": len(items), "items": items}
 
@@ -3284,12 +3285,29 @@ async def user_profile(eid: str):
             stop = next((s for s in route.get("stops", []) if s.get("id") == reg.get("stop_id")), None)
             route_info = {"route_name": route.get("name"), "stop_name": (stop or {}).get("name"),
                           "time": (stop or {}).get("time"), "direction": route.get("direction")}
+    activity = []
+    acfg = await gami_config()
+    amap = {e2["id"]: e2 for e2 in await db.employees.find({}, {"_id": 0}).to_list(1000)}
+    for k in await db.kudos.find({"to_id": eid, "status": "published"}, {"_id": 0}).sort("created_at", -1).to_list(20):
+        v = next((x for x in acfg["kudos_values"] if x["key"] == k["value"]), None)
+        activity.append({"type": "kudos", "icon": (v or {}).get("icon", "Award"),
+                         "text": f"{amap.get(k['from_id'], {}).get('name', 'Biri')}'ten {(v or {}).get('label', k['value'])} kudos'u aldı",
+                         "sub": k.get("message"), "date": k["created_at"]})
+    for pl in await db.game_plays.find({"employee_id": eid, "finished": True}, {"_id": 0}).sort("played_at", -1).to_list(20):
+        g = await db.games.find_one({"id": pl["game_id"]}, {"_id": 0})
+        activity.append({"type": "game", "icon": "Gamepad2",
+                         "text": f"{(g or {}).get('title', 'Bir oyun')} oyununu oynadı",
+                         "sub": f"{pl['correct_count']}/{pl['total']} doğru · +{pl['score']} puan", "date": pl["played_at"]})
+    for pp in await db.community_posts.find({"type": "anket", "options.votes": eid}, {"_id": 0}).to_list(50):
+        activity.append({"type": "poll", "icon": "BarChart3",
+                         "text": f"\"{pp['title']}\" anketinde oy kullandı", "sub": None, "date": pp.get("created_at")})
+    activity = sorted([a for a in activity if a.get("date")], key=lambda x: x["date"], reverse=True)[:15]
     return {"employee": {"id": emp["id"], "name": emp.get("name"), "department": emp.get("department"),
                          "location": emp.get("location"), "title": emp.get("title"), "seniority": emp.get("seniority"),
                          "avatar": emp.get("avatar"), "email": emp.get("email"), "phone": emp.get("phone")},
             "metrics": m, "level": cur, "next_level": nxt, "progress": progress, "to_next": to_next,
             "badges": earned_badges(m), "rank": rank, "total_people": len(lb),
-            "expert_in": expert_in, "route": route_info}
+            "expert_in": expert_in, "route": route_info, "activity": activity}
 
 
 app.include_router(api_router)

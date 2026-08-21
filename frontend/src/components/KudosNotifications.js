@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "@/api";
 import { useApp } from "@/context/AppContext";
 import { Icon } from "@/lib/icons";
@@ -6,16 +7,19 @@ import { Bell, PartyPopper, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
 export const KudosBell = () => {
+  const navigate = useNavigate();
   const { currentEmployeeId, role } = useApp();
   const [items, setItems] = useState([]);
+  const [open, setOpen] = useState(false);
 
   const load = () => { if (currentEmployeeId) api.inbox(currentEmployeeId).then((r) => setItems(r.items || [])); };
   useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, [currentEmployeeId, role]);
 
   const markSeen = async () => { if (currentEmployeeId) { await api.inboxSeen(currentEmployeeId); setItems([]); } };
+  const openItem = async (it) => { setOpen(false); if (it.link) navigate(it.link); if (currentEmployeeId) { await api.inboxSeen(currentEmployeeId); setItems([]); } };
 
   return (
-    <DropdownMenu onOpenChange={(o) => { if (o) load(); }}>
+    <DropdownMenu open={open} onOpenChange={(o) => { setOpen(o); if (o) load(); }}>
       <DropdownMenuTrigger asChild>
         <button data-testid="notifications-btn" aria-label="Bildirimler" className="relative p-2 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
           <Bell className="w-5 h-5" />
@@ -33,10 +37,10 @@ export const KudosBell = () => {
         ) : (
           <div className="max-h-80 overflow-y-auto pln-scroll">
             {items.map((it) => (
-              <div key={it.id} data-testid={`notif-item-${it.id}`} className="flex items-start gap-2.5 px-3 py-2.5 hover:bg-slate-50">
+              <button key={it.id} data-testid={`notif-item-${it.id}`} onClick={() => openItem(it)} className="w-full text-left flex items-start gap-2.5 px-3 py-2.5 hover:bg-slate-50 transition-colors">
                 <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 grid place-items-center shrink-0"><Icon name={it.icon} className="w-4 h-4" /></div>
                 <div className="text-sm text-slate-600">{it.text}{it.sub && <p className="text-xs text-slate-400 mt-0.5">{it.sub}</p>}</div>
-              </div>
+              </button>
             ))}
           </div>
         )}
