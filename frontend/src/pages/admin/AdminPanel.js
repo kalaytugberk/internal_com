@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { CategoriesManager } from "@/pages/admin/CategoriesManager";
 import { AnnouncementsManager } from "@/pages/admin/AnnouncementsManager";
 import { PulsesManager } from "@/pages/pulse/PulsesManager";
@@ -59,18 +60,25 @@ export const AdminPanel = () => {
       <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-slate-800">Admin Paneli · İç İletişim</h1>
       <p className="text-sm text-slate-500 mt-1">Kategori motorunu ve duyuruları buradan yönetin.</p>
 
-      <div className="flex gap-2 mt-6 mb-8 border-b border-slate-200">
-        {TABS.map((t) => {
-          const I = t.icon;
-          const on = tab === t.key;
-          return (
-            <button key={t.key} data-testid={`admin-tab-${t.key}`} onClick={() => setTab(t.key)}
-              className={["flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors",
-                on ? "text-blue-600 border-blue-600" : "text-slate-500 border-transparent hover:text-slate-800"].join(" ")}>
-              <I className="w-4 h-4" /> {t.label}
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap gap-1.5 mt-6 mb-8 border-b border-slate-200 pb-2">
+        <TooltipProvider delayDuration={150}>
+          {TABS.map((t) => {
+            const I = t.icon;
+            const on = tab === t.key;
+            return (
+              <Tooltip key={t.key}>
+                <TooltipTrigger asChild>
+                  <button data-testid={`admin-tab-${t.key}`} aria-label={t.label} onClick={() => setTab(t.key)}
+                    className={["grid place-items-center w-11 h-11 rounded-xl border transition-all",
+                      on ? "text-blue-600 bg-blue-50 border-blue-200 shadow-sm" : "text-slate-400 bg-white border-slate-100 hover:text-slate-700 hover:bg-slate-50"].join(" ")}>
+                    <I className="w-5 h-5" strokeWidth={1.8} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent><span className="text-xs font-medium">{t.label}</span></TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </TooltipProvider>
       </div>
 
       {tab === "categories" && <CategoriesManager onOpen={setTab} />}
